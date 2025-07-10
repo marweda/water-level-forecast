@@ -92,9 +92,8 @@ class PegelonlineWaterLevelCurrent(PegelonlineEndpoint):
         Case-insensitive.
     """
 
-
-def __init__(self, station_id: str):
-    super().__init__(f"{station_id}/W/currentmeasurement.json")
+    def __init__(self, station_id: str):
+        super().__init__(f"{station_id}/W/currentmeasurement.json")
 
 
 class PegelonlineWaterLevelForecast(PegelonlineEndpoint):
