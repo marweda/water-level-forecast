@@ -93,7 +93,7 @@ class PegelonlineWaterLevelCurrent(PegelonlineEndpoint):
     """
 
     def __init__(self, station_id: str):
-        super().__init__(f"{station_id}/W/currentmeasurement.json")
+        super().__init__(f"stations/{station_id}/W/currentmeasurement.json")
 
 
 class PegelonlineWaterLevelForecast(PegelonlineEndpoint):
