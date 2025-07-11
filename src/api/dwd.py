@@ -19,7 +19,7 @@ class DWDPrecipitationHourlyStations(DWDEndpoint):
 
 
 class DWDPrecipitationHourlyData(DWDEndpoint):
-    def __init__(self, station_id: int):
+    def __init__(self, station_id: str):
         resource = f"climate_environment/CDC/observations_germany/climate/hourly/precipitation/recent/stundenwerte_RR_{station_id}_akt.zip"
         super().__init__(resource)
 
@@ -31,6 +31,6 @@ class DWDRadolanRW(DWDEndpoint):
 
 
 class DWDRadvorRQ(DWDEndpoint):
-    def __init__(self, creation_time: int, forecast_span: int):
+    def __init__(self, creation_time: str, forecast_span: str):
         resource = f"weather/radar/radvor/rq/R{creation_time}_{forecast_span}.gz"
         super().__init__(resource)
