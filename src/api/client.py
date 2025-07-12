@@ -17,7 +17,7 @@ class ClientsBaseURLS(NamedTuple):
 
 class APIHttpClient:
     def __init__(self, base_url: str):
-        self.client = httpx.Client(base_url=base_url)
+        self.client = httpx.Client(base_url=base_url, timeout=60.0)
 
     def request(self, method: str, endpoint: str, **kwargs: Any) -> httpx.Response:
         response = self.client.request(method, endpoint, **kwargs)
