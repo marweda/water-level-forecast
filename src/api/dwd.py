@@ -1,4 +1,4 @@
-from .base import BaseEndpoint
+from .client import BaseEndpoint
 
 
 class DWDEndpoint(BaseEndpoint):
@@ -24,13 +24,4 @@ class DWDPrecipitationHourlyData(DWDEndpoint):
         super().__init__(resource)
 
 
-class DWDRadolanRW(DWDEndpoint):
-    def __init__(self):
-        resource = "weather/radar/radolan/rw/raa01-rw_10000-latest-dwd---bin.bz2"
-        super().__init__(resource)
 
-
-class DWDRadvorRQ(DWDEndpoint):
-    def __init__(self, creation_time: str, forecast_span: str):
-        resource = f"weather/radar/radvor/rq/R{creation_time}_{forecast_span}.gz"
-        super().__init__(resource)
