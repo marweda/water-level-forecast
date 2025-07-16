@@ -10,15 +10,9 @@ from .schemas import (
     PegelonlineForecastedAndEstimatedWaterLevel,
     DWDMosmixLSingleStationForecasts,
     DWDMosmixLStations,
+    DWDWeatherStations,
 )
-from .validator import (
-    PegelonlineStationValidator,
-    PegelonlineCurrentWaterLevelValidator,
-    PegelonlineForecastedAndEstimatedWaterLevelValidator,
-    DWDMosmixLSingleStationValidator,
-    DWDMosmixLStationsValidator,
-    DWDWeatherStationsValidator
-)
+
 
 __all__ = [
     "PegelonlineStationsExtractor",
@@ -38,7 +32,7 @@ class PegelonlineStationsExtractor:
         response = client.get("stations.json", params=params)
         response.raise_for_status()
         raw = response.json()
-        stations = PegelonlineStationValidator.validate(raw, params)
+        stations = PegelonlineStation.validate(raw, params)
         return stations
 
 
@@ -50,7 +44,7 @@ class PegelonlineCurrentWaterLevelExtractor:
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        water_level = PegelonlineCurrentWaterLevelValidator.validate(raw, uuid)
+        water_level = PegelonlineCurrentWaterLevel.validate(raw, uuid)
         return water_level
 
 
@@ -64,9 +58,7 @@ class PegelonlineForecastedAndEstimatedWaterLevelExtractor:
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        measurements = PegelonlineForecastedAndEstimatedWaterLevelValidator.validate(
-            raw, uuid
-        )
+        measurements = PegelonlineForecastedAndEstimatedWaterLevel.validate(raw, uuid)
         return measurements
 
 
@@ -83,7 +75,7 @@ class DWDMosmixLSingleStationExtractor:
 
         response = client.get(endpoint)
         raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
-        return DWDMosmixLSingleStationValidator.validate(raw_data, station_id)
+        return DWDMosmixLSingleStationForecasts.validate(raw_data, station_id)
 
 
 class DWDMosmixLStationsExtractor:
@@ -94,15 +86,15 @@ class DWDMosmixLStationsExtractor:
 
         response = client.get(endpoint)
         raw_data = DWDMosmixLStationsParser.parse(response.content)
-        return DWDMosmixLStationsValidator.validate(raw_data)
+        return DWDMosmixLStations.validate(raw_data)
 
 
 class DWDWeatherStationsExtractor:
 
     @classmethod
-    def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
+    def fetch(cls, client: APIHttpClient) -> DWDWeatherStations:
         endpoint = "climate_environment/CDC/help/stations_list_CLIMAT_data.txt"
 
         response = client.get(endpoint)
         raw_data = DWDWeatherStationsParser.parse(response.content)
-        return DWDWeatherStationsValidator.validate(raw_data)
+        return DWDWeatherStations.validate(raw_data)

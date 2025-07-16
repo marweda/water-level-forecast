@@ -1,11 +1,18 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal, Optional, Any
 from typing_extensions import Annotated
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
-
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ValidationInfo,
+    TypeAdapter,
+    ValidationError,
+)
 
 __all__ = [
     "PegelonlineStation",
@@ -44,6 +51,19 @@ class PegelonlineStation(BaseModel):
                 )
         return value
 
+    @classmethod
+    def validate(
+        cls,
+        raw: list[dict[str, Any]],
+        params: dict[str, Any],
+    ) -> list["PegelonlineStation"]:
+        adapter = TypeAdapter(list[cls])
+        try:
+            return adapter.validate_python(raw, context=params)
+        except ValidationError as exc:
+            exc.add_note(f"while validating /stations.json with params={params!r}")
+            raise
+
 
 class PegelonlineCurrentWaterLevel(BaseModel):
     uuid: UUID  # To be injected via validator
@@ -59,6 +79,19 @@ class PegelonlineCurrentWaterLevel(BaseModel):
         if uuid is not None:
             data["uuid"] = uuid
         return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: dict[str, Any],
+        uuid: str,
+    ) -> "PegelonlineCurrentWaterLevel":
+        adapter = TypeAdapter(cls)
+        try:
+            return adapter.validate_python(raw, context={"uuid": uuid})
+        except ValidationError as exc:
+            exc.add_note(f"while validating /stations/{uuid}/W/currentmeasurement.json")
+            raise
 
 
 class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
@@ -76,6 +109,19 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
             data["uuid"] = uuid
         return data
 
+    @classmethod
+    def validate(
+        cls,
+        raw: list[dict[str, Any]],
+        uuid: str,
+    ) -> list["PegelonlineForecastedAndEstimatedWaterLevel"]:
+        adapter = TypeAdapter(list[cls])
+        try:
+            return adapter.validate_python(raw, context={"uuid": uuid})
+        except ValidationError as exc:
+            exc.add_note(f"while validating /stations/{uuid}/WV/measurements.json")
+            raise
+
 
 class DWDMosmixLSingleStationForecasts(BaseModel):
     station_id: str  # To be injected via validator
@@ -87,40 +133,47 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def convert_values_and_timestamps(cls, data: dict, info: ValidationInfo) -> dict:
+        # Convert ISO strings to datetime
         if "issue_time" in data and isinstance(data["issue_time"], str):
             try:
-                # Handle ISO format with Z timezone
                 data["issue_time"] = datetime.fromisoformat(
                     data["issue_time"].replace("Z", "+00:00")
                 )
             except ValueError as err:
-                raise ValueError(f"Invalid issue_time: {data["issue_time"]!r}") from err
+                raise ValueError(f"Invalid issue_time: {data['issue_time']!r}") from err
 
         if "timestamps" in data and isinstance(data["timestamps"], list):
-            converted_timestamps = []
+            converted = []
             for ts in data["timestamps"]:
                 try:
-                    converted_timestamps.append(
-                        datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    )
+                    converted.append(datetime.fromisoformat(ts.replace("Z", "+00:00")))
                 except ValueError as err:
                     raise ValueError(f"Invalid timestamp: {ts!r}") from err
-            data["timestamps"] = converted_timestamps
+            data["timestamps"] = converted
 
         for param in ("RR1c", "RR3c"):
-            converted_values = []
-            for value in data[param]:
-                if value == "-":
-                    converted_values.append(None)
-                else:
-                    converted_values.append(value)
-
-            data[param] = converted_values
+            vals = []
+            for v in data[param]:
+                vals.append(None if v == "-" else v)
+            data[param] = vals
 
         if info.context and "station_id" in info.context:
             data["station_id"] = info.context["station_id"]
 
         return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: dict[str, Any],
+        station_id: str,
+    ) -> "DWDMosmixLSingleStationForecasts":
+        adapter = TypeAdapter(cls)
+        try:
+            return adapter.validate_python(raw, context={"station_id": station_id})
+        except ValidationError as exc:
+            exc.add_note(f"While validating MOSMIX_L forecast for station {station_id}")
+            raise
 
 
 class DWDMosmixLStations(BaseModel):
@@ -130,6 +183,18 @@ class DWDMosmixLStations(BaseModel):
     LAT: list[float]
     LON: list[float]
     ELEV: list[int]
+
+    @classmethod
+    def validate(
+        cls,
+        raw: dict[str, Any],
+    ) -> "DWDMosmixLStations":
+        adapter = TypeAdapter(cls)
+        try:
+            return adapter.validate_python(raw)
+        except ValidationError as exc:
+            exc.add_note("While validating MOSMIX_L available stations.")
+            raise
 
 
 class DWDWeatherStations(BaseModel):
@@ -149,3 +214,15 @@ class DWDWeatherStations(BaseModel):
             if key != "WMOStationID":
                 data[key] = [None if v == "" else v for v in value]
         return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: dict[str, Any],
+    ) -> "DWDWeatherStations":
+        adapter = TypeAdapter(cls)
+        try:
+            return adapter.validate_python(raw)
+        except ValidationError as exc:
+            exc.add_note("While validating DWD available weather stations.")
+            raise
