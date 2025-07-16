@@ -8,6 +8,7 @@ from .schemas import (
     PegelonlineForecastedAndEstimatedWaterLevel,
     DWDMosmixLSingleStationForecasts,
     DWDMosmixLStations,
+    DWDWeatherStations,
 )
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "PegelonlineForecastedAndEstimatedWaterLevelValidator",
     "DWDMosmixLSingleStationValidator",
     "DWDMosmixLStationsValidator",
+    "DWDWeatherStationsValidator",
 ]
 
 
@@ -82,4 +84,16 @@ class DWDMosmixLStationsValidator:
             return cls._adapter.validate_python(raw)
         except ValidationError as exc:
             exc.add_note(f"While validating MOSMIX_L available stations.")
+            raise
+
+
+class DWDWeatherStationsValidator:
+    _adapter = TypeAdapter(DWDWeatherStations)
+
+    @classmethod
+    def validate(cls, raw: dict) -> DWDWeatherStations:
+        try:
+            return cls._adapter.validate_python(raw)
+        except ValidationError as exc:
+            exc.add_note(f"While validating DWD available weather stations.")
             raise

@@ -1,5 +1,9 @@
 from .util import APIHttpClient
-from .dwd_parser import DWDMosmixLSingleStationKMZParser, DWDMosmixLStationsParser
+from .dwd_parser import (
+    DWDMosmixLSingleStationKMZParser,
+    DWDMosmixLStationsParser,
+    DWDWeatherStationsParser,
+)
 from .schemas import (
     PegelonlineStation,
     PegelonlineCurrentWaterLevel,
@@ -13,6 +17,7 @@ from .validator import (
     PegelonlineForecastedAndEstimatedWaterLevelValidator,
     DWDMosmixLSingleStationValidator,
     DWDMosmixLStationsValidator,
+    DWDWeatherStationsValidator
 )
 
 __all__ = [
@@ -85,8 +90,19 @@ class DWDMosmixLStationsExtractor:
 
     @classmethod
     def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
-        endpoint = "https://www.dwd.de/DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
+        endpoint = "DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
 
         response = client.get(endpoint)
         raw_data = DWDMosmixLStationsParser.parse(response.content)
         return DWDMosmixLStationsValidator.validate(raw_data)
+
+
+class DWDWeatherStationsExtractor:
+
+    @classmethod
+    def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
+        endpoint = "climate_environment/CDC/help/stations_list_CLIMAT_data.txt"
+
+        response = client.get(endpoint)
+        raw_data = DWDWeatherStationsParser.parse(response.content)
+        return DWDWeatherStationsValidator.validate(raw_data)

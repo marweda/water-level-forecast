@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Literal, Optional
+from typing_extensions import Annotated
 
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator, model_validator, ValidationInfo
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
 
 
 __all__ = [
@@ -12,6 +13,7 @@ __all__ = [
     "PegelonlineForecastedAndEstimatedWaterLevel",
     "DWDMosmixLSingleStationForecasts",
     "DWDMosmixLStations",
+    "DWDWeatherStations",
 ]
 
 
@@ -122,9 +124,28 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
 
 
 class DWDMosmixLStations(BaseModel):
-    ID: list[str]
+    ID: list[Annotated[str, Field(pattern=r".*\d.*")]]
     ICAO: list[str]
     NAME: list[str]
     LAT: list[float]
     LON: list[float]
     ELEV: list[int]
+
+
+class DWDWeatherStations(BaseModel):
+    WMOStationID: list[
+        Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
+    ]
+    StationName: list[Optional[str]]
+    Latitude: list[Optional[float]]
+    Longitude: list[Optional[float]]
+    Height: list[Optional[int]]
+    Country: list[Optional[str]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _clean_empty_strings(cls, data: dict) -> dict:
+        for key, value in data.items():
+            if key != "WMOStationID":
+                data[key] = [None if v == "" else v for v in value]
+        return data

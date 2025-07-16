@@ -13,7 +13,8 @@ __all__ = ["APIHttpClient", "ClientsBaseURLs"]
 
 
 class ClientsBaseURLs:
-    dwd: str = "https://opendata.dwd.de/"
+    dwd_opendata: str = "https://opendata.dwd.de/"
+    dwd: str = "https://www.dwd.de/"
     pegelonline: str = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/"
 
 
