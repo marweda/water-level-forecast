@@ -70,7 +70,7 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
     station_id: str  # To be injected via validator
     issue_time: datetime
     timestamps: list[datetime]
-    RR1c: list[float]
+    RR1c: list[Optional[float]]
     RR3c: list[Optional[float]]
 
     @model_validator(mode="before")
@@ -96,14 +96,15 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
                     raise ValueError(f"Invalid timestamp: {ts!r}") from err
             data["timestamps"] = converted_timestamps
 
-        converted_values = []
-        for value in data["RR3c"]:
-            if value == "-":
-                converted_values.append(None)
-            else:
-                converted_values.append(value)
+        for param in ("RR1c", "RR3c"):
+            converted_values = []
+            for value in data[param]:
+                if value == "-":
+                    converted_values.append(None)
+                else:
+                    converted_values.append(value)
 
-        data["RR3c"] = converted_values
+            data[param] = converted_values
 
         if info.context and "station_id" in info.context:
             data["station_id"] = info.context["station_id"]

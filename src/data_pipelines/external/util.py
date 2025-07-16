@@ -133,7 +133,7 @@ class DWDMosmixLSingleStationKMZParser:
         kml_content = cls._extract_kml(kmz_content)
         root = ET.fromstring(kml_content)
 
-        issue_time = cls._parse_issue_time
+        issue_time = cls._parse_issue_time(root)
         forecast_timestamps = cls._parse_forecast_timestamps(root)
         forecasts = cls._parse_forecasts(root)
 
