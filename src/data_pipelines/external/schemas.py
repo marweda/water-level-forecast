@@ -6,6 +6,15 @@ from uuid import UUID
 from pydantic import BaseModel, field_validator, model_validator, ValidationInfo
 
 
+__all__ = [
+    "PegelonlineStation",
+    "PegelonlineCurrentWaterLevel",
+    "PegelonlineForecastedAndEstimatedWaterLevel",
+    "DWDMosmixLSingleStationForecasts",
+    "DWDMosmixLStations",
+]
+
+
 class PegelonlineStation(BaseModel):
     uuid: UUID
     number: int
@@ -110,3 +119,12 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
             data["station_id"] = info.context["station_id"]
 
         return data
+
+
+class DWDMosmixLStations(BaseModel):
+    ID: list[str]
+    ICAO: list[str]
+    NAME: list[str]
+    LAT: list[float]
+    LON: list[float]
+    ELEV: list[int]

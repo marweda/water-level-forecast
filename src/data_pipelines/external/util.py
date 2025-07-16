@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 
-__all__ = ["APIHttpClient", "ClientsBaseURLs", "DWDMosmixLSingleStationKMZParser"]
+__all__ = ["APIHttpClient", "ClientsBaseURLs"]
 
 
 class ClientsBaseURLs:

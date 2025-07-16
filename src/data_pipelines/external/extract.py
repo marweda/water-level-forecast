@@ -1,16 +1,18 @@
 from .util import APIHttpClient
-from .dwd_parser import DWDMosmixLSingleStationKMZParser
+from .dwd_parser import DWDMosmixLSingleStationKMZParser, DWDMosmixLStationsParser
 from .schemas import (
     PegelonlineStation,
     PegelonlineCurrentWaterLevel,
     PegelonlineForecastedAndEstimatedWaterLevel,
     DWDMosmixLSingleStationForecasts,
+    DWDMosmixLStations,
 )
 from .validator import (
     PegelonlineStationValidator,
     PegelonlineCurrentWaterLevelValidator,
     PegelonlineForecastedAndEstimatedWaterLevelValidator,
     DWDMosmixLSingleStationValidator,
+    DWDMosmixLStationsValidator,
 )
 
 __all__ = [
@@ -18,6 +20,7 @@ __all__ = [
     "PegelonlineCurrentWaterLevelExtractor",
     "PegelonlineForecastedAndEstimatedWaterLevelExtractor",
     "DWDMosmixLSingleStationExtractor",
+    "DWDMosmixLStationsExtractor",
 ]
 
 
@@ -82,8 +85,8 @@ class DWDMosmixLStationsExtractor:
 
     @classmethod
     def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
-        endpoint = "weather/local_forecasts/mos/MOSMIX_L/all_stations/kml/"
+        endpoint = "https://www.dwd.de/DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
 
         response = client.get(endpoint)
         raw_data = DWDMosmixLStationsParser.parse(response.content)
-        return DWDMoxmixLStations.validate()
+        return DWDMosmixLStationsValidator.validate(raw_data)
