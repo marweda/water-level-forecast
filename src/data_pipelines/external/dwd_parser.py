@@ -1,8 +1,12 @@
 import io
+import re
 from xml.etree import ElementTree as ET
 import zipfile
 
-__all__ = ["DWDMosmixLSingleStationKMZParser"]
+__all__ = [
+    "DWDMosmixLSingleStationKMZParser",
+    "DWDMosmixLStationsParser",
+]
 
 
 class DWDMosmixLSingleStationKMZParser:
@@ -113,3 +117,67 @@ class DWDMosmixLSingleStationKMZParser:
             issue_time, forecast_timestamps, forecasts
         )
         return forecast_data
+
+
+class DWDMosmixLStationsParser:
+
+    @classmethod
+    def _extract_txt(cls, stations_content: bytes) -> str:
+        raw_txt = stations_content.decode("latin-1")
+        return raw_txt
+
+    @classmethod
+    def _split_by_rows(cls, raw_txt: str) -> list[str]:
+        row_splitted_text = raw_txt.split("\n")
+        return row_splitted_text
+
+    @classmethod
+    def _remove_header_deliminator_row(cls, row_splitted_txt: list[str]) -> list[str]:
+        row_splitted_txt.pop(1)
+        return row_splitted_txt
+
+    @classmethod
+    def _extract_columns(cls, parts: list[str]) -> list[str]:
+        if len(parts) < 6:
+            raise ValueError(f"Expected at least 6 parts, got {len(parts)}: {parts!r}")
+
+        id_, icao = parts[:2]
+        lat, lon, elev = parts[-3:]
+        name = " ".join(parts[2:-3])
+        return [id_, icao, name, lat, lon, elev]
+
+    @classmethod
+    def _split_rows_by_columns(cls, row_splitted_txt: list[str]) -> list[list[str]]:
+        stations_matrix: list[list[str]] = []
+        for row in row_splitted_txt:
+            row = row.strip()
+            if not row:
+                continue
+            parts = row.split()
+            cols = cls._extract_columns(parts)
+            stations_matrix.append(cols)
+        return stations_matrix
+
+    @classmethod
+    def _create_json_structure(
+        cls, txt_matrix: list[list[str]]
+    ) -> dict[str, list[str]]:
+        keys = txt_matrix[0]
+        stations_data = dict.fromkeys(keys)
+        txt_matrix_without_header = txt_matrix[1:]
+        stations_data[keys[0]] = [row[0] for row in txt_matrix_without_header]
+        stations_data[keys[1]] = [row[1] for row in txt_matrix_without_header]
+        stations_data[keys[2]] = [row[2] for row in txt_matrix_without_header]
+        stations_data[keys[3]] = [row[3] for row in txt_matrix_without_header]
+        stations_data[keys[4]] = [row[4] for row in txt_matrix_without_header]
+        stations_data[keys[5]] = [row[5] for row in txt_matrix_without_header]
+        return stations_data
+
+    @classmethod
+    def parse(cls, stations_content: bytes) -> dict[str, str]:
+        raw_txt = cls._extract_txt(stations_content)
+        row_splitted_txt = cls._split_by_rows(raw_txt)
+        filtered_row_splitted_txt = cls._remove_header_deliminator_row(row_splitted_txt)
+        txt_matrix = cls._split_rows_by_columns(filtered_row_splitted_txt)
+        stations_data = cls._create_json_structure(txt_matrix)
+        return stations_data
