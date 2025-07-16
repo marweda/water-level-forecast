@@ -1,4 +1,5 @@
-from .util import APIHttpClient, DWDMosmixLSingleStationKMZParser
+from .util import APIHttpClient
+from .dwd_parser import DWDMosmixLSingleStationKMZParser
 from .schemas import (
     PegelonlineStation,
     PegelonlineCurrentWaterLevel,
@@ -67,18 +68,22 @@ class DWDMosmixLSingleStationExtractor:
     def fetch(
         cls, client: APIHttpClient, station_id: str
     ) -> DWDMosmixLSingleStationForecasts:
-        # Build endpoint URL
         endpoint = (
             f"weather/local_forecasts/mos/MOSMIX_L/single_stations/"
             f"{station_id}/kml/MOSMIX_L_LATEST_{station_id}.kmz"
         )
 
-        # Fetch KMZ content
         response = client.get(endpoint)
-        response.raise_for_status()
-
-        # Parse KMZ content using updated parser
         raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
-
-        # Validate and return
         return DWDMosmixLSingleStationValidator.validate(raw_data, station_id)
+
+
+class DWDMosmixLStationsExtractor:
+
+    @classmethod
+    def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
+        endpoint = "weather/local_forecasts/mos/MOSMIX_L/all_stations/kml/"
+
+        response = client.get(endpoint)
+        raw_data = DWDMosmixLStationsParser.parse(response.content)
+        return DWDMoxmixLStations.validate()
