@@ -4,7 +4,7 @@ A machine learning pipeline that periodically retrieves official water level and
 
 ## About This Project
 
-This is a personal learning project developed in my free time to gain hands-on experience and skills with new technologies. It combines various aspects of modern software development including:
+This is a personal learning project developed in my free time to gain hands-on experience and skills with new technologies. It combines various aspects of modern machine learning pipelines including:
 
 - Machine Learning with Gaussian Processes
 - REST API integration
@@ -53,5 +53,3 @@ This is a personal learning project developed in my free time to gain hands-on e
 - [ ] Add logging and monitoring
 
 ---
-
-*This project serves as a practical learning experience to explore and gain proficiency in modern data science, machine learning, and software engineering technologies.*
