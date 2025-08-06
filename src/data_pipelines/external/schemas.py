@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional, Any
 from typing_extensions import Annotated
 
@@ -20,7 +20,8 @@ __all__ = [
     "PegelonlineForecastedAndEstimatedWaterLevel",
     "DWDMosmixLSingleStationForecasts",
     "DWDMosmixLStations",
-    "DWDWeatherStations",
+    "DWDTenMinNowPercipitationStations",
+    "DWDTenMinNowPercipitation",
 ]
 
 
@@ -197,32 +198,73 @@ class DWDMosmixLStations(BaseModel):
             raise
 
 
-class DWDWeatherStations(BaseModel):
-    WMOStationID: list[
+class DWDTenMinNowPercipitationStations(BaseModel):
+    Stations_id: list[
         Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
     ]
-    StationName: list[Optional[str]]
-    Latitude: list[Optional[float]]
-    Longitude: list[Optional[float]]
-    Height: list[Optional[int]]
-    Country: list[Optional[str]]
+    von_datum: list[datetime]
+    bis_datum: list[datetime]
+    Stationshoehe: list[int]
+    geoBreite: list[float]
+    geoLaenge: list[float]
+    Stationsname: list[str]
+    Bundesland: list[str]
+    Abgabe: list[Optional[str]]
 
     @model_validator(mode="before")
     @classmethod
     def _clean_empty_strings(cls, data: dict) -> dict:
         for key, value in data.items():
-            if key != "WMOStationID":
-                data[key] = [None if v == "" else v for v in value]
+            if key == "Abgabe":
+                data[key] = [None if v == "-" else v for v in value]
         return data
 
     @classmethod
     def validate(
         cls,
         raw: dict[str, Any],
-    ) -> "DWDWeatherStations":
+    ) -> "DWDTenMinNowPercipitationStations":
         adapter = TypeAdapter(cls)
         try:
             return adapter.validate_python(raw)
         except ValidationError as exc:
-            exc.add_note("While validating DWD available weather stations.")
+            exc.add_note(
+                "While validating DWD available hourly percipitation weather stations."
+            )
             raise
+
+
+class DWDTenMinNowPercipitation(BaseModel):
+    station_id: str
+    timestamp: datetime
+    quality_note: int = Field(alias="QN")
+    precipitation_duration: Optional[int] = Field(alias="RWS_DAU_10")
+    precipitation_amount: Optional[float] = Field(alias="RWS_10")
+    precipitation_index: Optional[int] = Field(alias="RWS_IND_10")
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def parse_timestamp(cls, v: str) -> datetime:
+        return datetime.strptime(v, "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
+
+    @field_validator("precipitation_duration", "precipitation_index", mode="before")
+    @classmethod
+    def handle_missing_int(cls, v: str) -> Optional[int]:
+        return None if v.strip() == "-999" else int(v)
+
+    @field_validator("precipitation_amount", mode="before")
+    @classmethod
+    def handle_missing_float(cls, v: str) -> Optional[float]:
+        return None if v.strip() == "-999" else float(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_station_id(cls, data: dict, info: ValidationInfo) -> dict:
+        context = info.context or {}
+        expected = context.get("station_id")
+        if expected and str(data.get("STATIONS_ID")) != expected:
+            raise ValueError(
+                f"Station ID mismatch: expected {expected}, "
+                f"got {data.get('STATIONS_ID')}"
+            )
+        return data

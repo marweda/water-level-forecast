@@ -2,7 +2,8 @@ from .util import APIHttpClient
 from .dwd_parser import (
     DWDMosmixLSingleStationKMZParser,
     DWDMosmixLStationsParser,
-    DWDWeatherStationsParser,
+    DWDTenMinNowPercipitationStationsParser,
+    DWDTenMinNowPercipitationParser,
 )
 from .schemas import (
     PegelonlineStation,
@@ -10,7 +11,8 @@ from .schemas import (
     PegelonlineForecastedAndEstimatedWaterLevel,
     DWDMosmixLSingleStationForecasts,
     DWDMosmixLStations,
-    DWDWeatherStations,
+    DWDTenMinNowPercipitationStations,
+    DWDTenMinNowPercipitation,
 )
 
 
@@ -89,12 +91,39 @@ class DWDMosmixLStationsExtractor:
         return DWDMosmixLStations.validate(raw_data)
 
 
-class DWDWeatherStationsExtractor:
+class DWDTenMinNowPercipitationStationsExtractor:
 
     @classmethod
-    def fetch(cls, client: APIHttpClient) -> DWDWeatherStations:
-        endpoint = "climate_environment/CDC/help/stations_list_CLIMAT_data.txt"
+    def fetch(cls, client: APIHttpClient) -> DWDTenMinNowPercipitationStations:
+        endpoint = "climate_environment/CDC/observations_germany/climate/10_minutes/precipitation/now/zehn_now_rr_Beschreibung_Stationen.txt"
 
         response = client.get(endpoint)
-        raw_data = DWDWeatherStationsParser.parse(response.content)
-        return DWDWeatherStations.validate(raw_data)
+        raw_data = DWDTenMinNowPercipitationStationsParser.parse(response.content)
+
+        return DWDTenMinNowPercipitationStations.validate(raw_data)
+
+
+class DWDTenMinNowPercipitationDataExtractor:
+
+    @classmethod
+    def fetch(
+        cls, client: APIHttpClient, station_id: str
+    ) -> list[DWDTenMinNowPercipitation]:
+        endpoint = (
+            f"climate_environment/CDC/observations_germany/climate/"
+            f"10_minutes/precipitation/now/10minutenwerte_nieder_{station_id}_now.zip"
+        )
+
+        response = client.get(endpoint)
+        response.raise_for_status()
+
+        raw_data = DWDTenMinNowPercipitationParser.parse(response.content)
+
+        adapter = TypeAdapter(list[DWDTenMinNowPercipitationData])
+        try:
+            return adapter.validate_python(raw_data, context={"station_id": station_id})
+        except ValidationError as exc:
+            exc.add_note(
+                f"While validating 10min precipitation data for station {station_id}"
+            )
+            raise
