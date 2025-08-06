@@ -244,8 +244,8 @@ class DWDTenMinNowPercipitationStations(BaseModel):
 
 
 class DWDTenMinNowPercipitation(BaseModel):
-    station_id: str
-    timestamp: datetime
+    station_id: str = Field(alias="STATIONS_ID")
+    timestamp: datetime = Field(alias="MESS_DATUM")
     quality_note: int = Field(alias="QN")
     precipitation_duration: Optional[int] = Field(alias="RWS_DAU_10")
     precipitation_amount: Optional[float] = Field(alias="RWS_10")
@@ -268,7 +268,11 @@ class DWDTenMinNowPercipitation(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def check_station_id(cls, data: dict, info: ValidationInfo) -> dict:
+    def process_station_data(cls, data: dict, info: ValidationInfo) -> dict:
+        # Pad STATIONS_ID to 5 digits with leading zeros
+        station_id_str = str(data["STATIONS_ID"])
+        data["STATIONS_ID"] = station_id_str.zfill(5)
+
         context = info.context or {}
         expected = context.get("station_id")
         if expected and str(data.get("STATIONS_ID")) != expected:
@@ -277,3 +281,18 @@ class DWDTenMinNowPercipitation(BaseModel):
                 f"got {data.get('STATIONS_ID')}"
             )
         return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: dict[str, str],
+        station_id: str,
+    ) -> list[Self]:
+        adapter = TypeAdapter(list[cls])
+        try:
+            return adapter.validate_python(raw, context={"station_id": station_id})
+        except ValidationError as exc:
+            exc.add_note(
+                f"While validating 10min precipitation data for station {station_id}"
+            )
+            raise

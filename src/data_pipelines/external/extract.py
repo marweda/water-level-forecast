@@ -118,12 +118,4 @@ class DWDTenMinNowPercipitationDataExtractor:
         response.raise_for_status()
 
         raw_data = DWDTenMinNowPercipitationParser.parse(response.content)
-
-        adapter = TypeAdapter(list[DWDTenMinNowPercipitationData])
-        try:
-            return adapter.validate_python(raw_data, context={"station_id": station_id})
-        except ValidationError as exc:
-            exc.add_note(
-                f"While validating 10min precipitation data for station {station_id}"
-            )
-            raise
+        return DWDTenMinNowPercipitation.validate(raw_data, station_id)
