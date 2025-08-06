@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Literal, Optional, Any
+from typing import Literal, Optional, Any, Self
 from typing_extensions import Annotated
 
 from uuid import UUID
@@ -32,9 +32,18 @@ class PegelonlineStation(BaseModel):
     longname: str
     km: float
     agency: str
-    longitude: float
-    latitude: float
+    longitude: Optional[float]
+    latitude: Optional[float]
     water: dict[str, str]
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_location_keys(cls, data):
+        if "longitude" not in data:
+            data["longitude"] = None
+        if "latitude" not in data:
+            data["latitude"] = None
+        return data
 
     @field_validator("water", mode="after")
     @classmethod
@@ -45,7 +54,7 @@ class PegelonlineStation(BaseModel):
     ) -> dict[str, str]:
         ctx = info.context
         if isinstance(ctx, dict) and "waters" in ctx:
-            allowed = set(ctx["waters"])
+            allowed = ctx["waters"]
             if value.get("longname") not in allowed:
                 raise ValueError(
                     f"Station water {value} not among requested waters={allowed}"
@@ -57,7 +66,7 @@ class PegelonlineStation(BaseModel):
         cls,
         raw: list[dict[str, Any]],
         params: dict[str, Any],
-    ) -> list["PegelonlineStation"]:
+    ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
         try:
             return adapter.validate_python(raw, context=params)
@@ -86,7 +95,7 @@ class PegelonlineCurrentWaterLevel(BaseModel):
         cls,
         raw: dict[str, Any],
         uuid: str,
-    ) -> "PegelonlineCurrentWaterLevel":
+    ) -> Self:
         adapter = TypeAdapter(cls)
         try:
             return adapter.validate_python(raw, context={"uuid": uuid})
@@ -115,7 +124,7 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
         cls,
         raw: list[dict[str, Any]],
         uuid: str,
-    ) -> list["PegelonlineForecastedAndEstimatedWaterLevel"]:
+    ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
         try:
             return adapter.validate_python(raw, context={"uuid": uuid})
@@ -168,7 +177,7 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
         cls,
         raw: dict[str, Any],
         station_id: str,
-    ) -> "DWDMosmixLSingleStationForecasts":
+    ) -> Self:
         adapter = TypeAdapter(cls)
         try:
             return adapter.validate_python(raw, context={"station_id": station_id})
@@ -189,7 +198,7 @@ class DWDMosmixLStations(BaseModel):
     def validate(
         cls,
         raw: dict[str, Any],
-    ) -> "DWDMosmixLStations":
+    ) -> Self:
         adapter = TypeAdapter(cls)
         try:
             return adapter.validate_python(raw)
@@ -223,7 +232,7 @@ class DWDTenMinNowPercipitationStations(BaseModel):
     def validate(
         cls,
         raw: dict[str, Any],
-    ) -> "DWDTenMinNowPercipitationStations":
+    ) -> Self:
         adapter = TypeAdapter(cls)
         try:
             return adapter.validate_python(raw)
