@@ -64,8 +64,8 @@ class PegelonlineStation(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: list[dict[str, Any]],
-        params: dict[str, Any],
+        raw: list[dict[str, str]],
+        params: dict[str, str],
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
         try:
@@ -93,7 +93,7 @@ class PegelonlineCurrentWaterLevel(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: dict[str, Any],
+        raw: dict[str, str],
         uuid: str,
     ) -> Self:
         adapter = TypeAdapter(cls)
@@ -122,7 +122,7 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: list[dict[str, Any]],
+        raw: list[dict[str, str]],
         uuid: str,
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
@@ -175,7 +175,7 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: dict[str, Any],
+        raw: dict[str, str],
         station_id: str,
     ) -> Self:
         adapter = TypeAdapter(cls)
@@ -197,7 +197,7 @@ class DWDMosmixLStations(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: dict[str, Any],
+        raw: dict[str, str],
     ) -> Self:
         adapter = TypeAdapter(cls)
         try:
@@ -231,7 +231,7 @@ class DWDTenMinNowPercipitationStations(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: dict[str, Any],
+        raw: dict[str, str],
     ) -> Self:
         adapter = TypeAdapter(cls)
         try:
