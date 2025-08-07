@@ -139,7 +139,7 @@ class DWDMosmixLStationsParser:
         return row_splitted_txt
 
     @classmethod
-    def _extract_columns(cls, parts: list[str]) -> list[str]:
+    def _extract_columns(cls, parts: list[str]) -> list[str]: 
         if len(parts) < 6:
             raise ValueError(f"Expected at least 6 parts, got {len(parts)}: {parts!r}")
 
@@ -153,6 +153,8 @@ class DWDMosmixLStationsParser:
         stations_matrix: list[list[str]] = []
         for row in row_splitted_txt:
             row = row.strip()
+            if not row:
+                continue
             parts = row.split()
             cols = cls._extract_columns(parts)
             stations_matrix.append(cols)

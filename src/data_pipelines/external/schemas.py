@@ -105,7 +105,7 @@ class PegelonlineCurrentWaterLevel(BaseModel):
 
 
 class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
-    uuid: UUID  # To be injected via validator
+    uuid: UUID
     initialized: datetime
     timestamp: datetime
     value: int
