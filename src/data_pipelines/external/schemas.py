@@ -187,19 +187,24 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
 
 
 class DWDMosmixLStations(BaseModel):
-    ID: list[Annotated[str, Field(pattern=r".*\d.*")]]
-    ICAO: list[str]
-    NAME: list[str]
-    LAT: list[float]
-    LON: list[float]
-    ELEV: list[int]
+    ID: Annotated[str, Field(pattern=r".*\d.*")]
+    ICAO: Optional[str]
+    NAME: str
+    LAT: float
+    LON: float
+    ELEV: int
+
+    @field_validator("ICAO", mode="before")
+    @classmethod
+    def _dash_means_none(cls, v):
+        return None if v == "----" else v
 
     @classmethod
     def validate(
         cls,
-        raw: dict[str, str],
+        raw: list[dict[str, str]],
     ) -> Self:
-        adapter = TypeAdapter(cls)
+        adapter = TypeAdapter(list[cls])
         try:
             return adapter.validate_python(raw)
         except ValidationError as exc:

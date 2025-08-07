@@ -163,17 +163,9 @@ class DWDMosmixLStationsParser:
     @classmethod
     def _create_json_structure(
         cls, txt_matrix: list[list[str]]
-    ) -> dict[str, list[str]]:
-        keys = txt_matrix[0]
-        stations_data = dict.fromkeys(keys)
-        txt_matrix_without_header = txt_matrix[1:]
-        stations_data[keys[0]] = [row[0] for row in txt_matrix_without_header]
-        stations_data[keys[1]] = [row[1] for row in txt_matrix_without_header]
-        stations_data[keys[2]] = [row[2] for row in txt_matrix_without_header]
-        stations_data[keys[3]] = [row[3] for row in txt_matrix_without_header]
-        stations_data[keys[4]] = [row[4] for row in txt_matrix_without_header]
-        stations_data[keys[5]] = [row[5] for row in txt_matrix_without_header]
-        return stations_data
+    ) -> list[dict[str,str]]:
+        headers = txt_matrix[0]
+        return [dict(zip(headers, row)) for row in txt_matrix[1:]]
 
     @classmethod
     def parse(cls, stations_content: bytes) -> dict[str, str]:
