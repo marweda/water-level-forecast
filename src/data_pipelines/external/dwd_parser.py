@@ -96,13 +96,17 @@ class DWDMosmixLSingleStationKMZParser:
         forecast_timestamps: list[str],
         forecasts: dict[str, list[str]],
     ) -> dict[str, str]:
-        json_structure = {
-            "issue_time": issue_time,
-            "timestamps": forecast_timestamps,
-            "RR1c": forecasts["RR1c"],
-            "RR3c": forecasts["RR3c"],
-        }
-        return json_structure
+        rr1c_values = forecasts["RR1c"]
+        rr3c_values = forecasts["RR3c"]
+        return [
+            {
+                "issue_time": issue_time,
+                "timestamp": ft,
+                "RR1c": rv1,
+                "RR3c": rv3,
+            }
+            for ft, rv1, rv3 in zip(forecast_timestamps, rr1c_values, rr3c_values)
+        ]
 
     @classmethod
     def parse(cls, kmz_content: bytes) -> dict[str, str]:
@@ -139,7 +143,7 @@ class DWDMosmixLStationsParser:
         return row_splitted_txt
 
     @classmethod
-    def _extract_columns(cls, parts: list[str]) -> list[str]: 
+    def _extract_columns(cls, parts: list[str]) -> list[str]:
         if len(parts) < 6:
             raise ValueError(f"Expected at least 6 parts, got {len(parts)}: {parts!r}")
 
@@ -163,7 +167,7 @@ class DWDMosmixLStationsParser:
     @classmethod
     def _create_json_structure(
         cls, txt_matrix: list[list[str]]
-    ) -> list[dict[str,str]]:
+    ) -> list[dict[str, str]]:
         headers = txt_matrix[0]
         return [dict(zip(headers, row)) for row in txt_matrix[1:]]
 
@@ -206,7 +210,6 @@ class DWDTenMinNowPercipitationStationsParser:
         if len(parts) < 8:
             raise ValueError(f"Expected at least 8 parts, got {len(parts)}: {parts!r}")
 
-        # fixed fields
         stations_id, von_datum, bis_datum, stationshoehe, geobreite, geolaenge = parts[
             :6
         ]
@@ -215,7 +218,7 @@ class DWDTenMinNowPercipitationStationsParser:
         ]
         last = parts[-1]
 
-        # Determine if last token is a valid Abgabe (numeric, '-', or 'Frei')
+        # Determine if last token is a valid Abgabe value
         is_abgabe = last in ("Frei")
 
         if not is_abgabe:

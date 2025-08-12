@@ -136,36 +136,29 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
 class DWDMosmixLSingleStationForecasts(BaseModel):
     station_id: str  # To be injected via validator
     issue_time: datetime
-    timestamps: list[datetime]
-    RR1c: list[Optional[float]]
-    RR3c: list[Optional[float]]
+    timestamp: datetime
+    RR1c: Optional[float]
+    RR3c: Optional[float]
 
     @model_validator(mode="before")
     @classmethod
-    def convert_values_and_timestamps(cls, data: dict, info: ValidationInfo) -> dict:
+    def convert_values_and_timestamps(cls, data: dict, info: ValidationInfo) -> list[dict]:
         # Convert ISO strings to datetime
-        if "issue_time" in data and isinstance(data["issue_time"], str):
-            try:
-                data["issue_time"] = datetime.fromisoformat(
-                    data["issue_time"].replace("Z", "+00:00")
-                )
-            except ValueError as err:
-                raise ValueError(f"Invalid issue_time: {data['issue_time']!r}") from err
+        try:
+            data["issue_time"] = datetime.fromisoformat(
+                data["issue_time"].replace("Z", "+00:00")
+            )
+        except ValueError as err:
+            raise ValueError(f"Invalid issue_time: {data['issue_time']!r}") from err
 
-        if "timestamps" in data and isinstance(data["timestamps"], list):
-            converted = []
-            for ts in data["timestamps"]:
-                try:
-                    converted.append(datetime.fromisoformat(ts.replace("Z", "+00:00")))
-                except ValueError as err:
-                    raise ValueError(f"Invalid timestamp: {ts!r}") from err
-            data["timestamps"] = converted
+        try:
+            data["timestamp"] = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
+        except ValueError as err:
+            raise ValueError(f"Invalid timestamp: {data["timestamp"]!r}") from err
 
         for param in ("RR1c", "RR3c"):
-            vals = []
-            for v in data[param]:
-                vals.append(None if v == "-" else v)
-            data[param] = vals
+            value = data[param]
+            data[param] = None if value == "-" else value
 
         if info.context and "station_id" in info.context:
             data["station_id"] = info.context["station_id"]
@@ -175,10 +168,10 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
     @classmethod
     def validate(
         cls,
-        raw: dict[str, str],
+        raw: list[dict[str, str]],
         station_id: str,
     ) -> Self:
-        adapter = TypeAdapter(cls)
+        adapter = TypeAdapter(list[cls])
         try:
             return adapter.validate_python(raw, context={"station_id": station_id})
         except ValidationError as exc:
