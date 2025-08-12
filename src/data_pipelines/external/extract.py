@@ -64,6 +64,17 @@ class PegelonlineForecastedAndEstimatedWaterLevelExtractor:
         return measurements
 
 
+class DWDMosmixLStationsExtractor:
+
+    @classmethod
+    def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
+        endpoint = "DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
+
+        response = client.get(endpoint)
+        raw_data = DWDMosmixLStationsParser.parse(response.content)
+        return DWDMosmixLStations.validate(raw_data)
+
+
 class DWDMosmixLSingleStationExtractor:
 
     @classmethod
@@ -78,17 +89,6 @@ class DWDMosmixLSingleStationExtractor:
         response = client.get(endpoint)
         raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
         return DWDMosmixLSingleStationForecasts.validate(raw_data, station_id)
-
-
-class DWDMosmixLStationsExtractor:
-
-    @classmethod
-    def fetch(cls, client: APIHttpClient) -> DWDMosmixLStations:
-        endpoint = "DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
-
-        response = client.get(endpoint)
-        raw_data = DWDMosmixLStationsParser.parse(response.content)
-        return DWDMosmixLStations.validate(raw_data)
 
 
 class DWDTenMinNowPercipitationStationsExtractor:
