@@ -200,7 +200,7 @@ class DWDTenMinNowPercipitationStationsParser:
         "Schleswig-Holstein",
         "Thüringen",
     }
-    
+
     valid_abgabe_values = {"Frei"}
 
     @classmethod
@@ -230,7 +230,7 @@ class DWDTenMinNowPercipitationStationsParser:
         """Parse a single station row into a dictionary"""
         # Split by spaces to get parts
         parts = row.split()
-        
+
         # Extract fixed fields from known positions
         stations_id = parts[0]
         von_datum = parts[1]
@@ -238,11 +238,11 @@ class DWDTenMinNowPercipitationStationsParser:
         stationshoehe = parts[3]
         geo_breite = parts[4]
         geo_laenge = parts[5]
-        
+
         # Determine Abgabe value (last part if it's a known value)
         last_part = parts[-1]
         has_abgabe = last_part in cls.valid_abgabe_values
-        
+
         if has_abgabe:
             abgabe = last_part
             bundesland = parts[-2]
@@ -253,9 +253,9 @@ class DWDTenMinNowPercipitationStationsParser:
             bundesland = last_part
             # Everything between geo_laenge and bundesland is stationsname
             stationsname_parts = parts[6:-1]
-        
+
         stationsname = " ".join(stationsname_parts)
-        
+
         return {
             "Stations_id": stations_id,
             "von_datum": von_datum,
@@ -269,20 +269,20 @@ class DWDTenMinNowPercipitationStationsParser:
         }
 
     @classmethod
-    def parse(cls, stations_content: bytes) -> list[dict[str, str]]:
-        """Parse station content and return list of JSON-like dictionaries"""
-        raw_txt = cls._extract_txt(stations_content)
-        row_splitted_txt = cls._split_by_rows(raw_txt)
-        
-        # Remove the delimiter row
-        filtered_rows = cls._remove_header_delimiter_row(row_splitted_txt)
-        
-        # Parse data rows (skip header)
+    def _create_json_structure(cls, filtered_rows: list[str]) -> list[dict[str, str]]:
         stations_data = []
         for row in filtered_rows[1:]:  # Skip header row
             station_dict = cls._parse_station_row(row)
             stations_data.append(station_dict)
-        
+        return stations_data
+
+    @classmethod
+    def parse(cls, stations_content: bytes) -> list[dict[str, str]]:
+        """Parse station content and return list of JSON-like dictionaries"""
+        raw_txt = cls._extract_txt(stations_content)
+        row_splitted_txt = cls._split_by_rows(raw_txt)
+        filtered_rows = cls._remove_header_delimiter_row(row_splitted_txt)
+        stations_data = cls._create_json_structure(filtered_rows)
         return stations_data
 
 
