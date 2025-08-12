@@ -142,7 +142,9 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def convert_values_and_timestamps(cls, data: dict, info: ValidationInfo) -> list[dict]:
+    def convert_values_and_timestamps(
+        cls, data: dict, info: ValidationInfo
+    ) -> list[dict]:
         # Convert ISO strings to datetime
         try:
             data["issue_time"] = datetime.fromisoformat(
@@ -152,7 +154,9 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
             raise ValueError(f"Invalid issue_time: {data['issue_time']!r}") from err
 
         try:
-            data["timestamp"] = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
+            data["timestamp"] = datetime.fromisoformat(
+                data["timestamp"].replace("Z", "+00:00")
+            )
         except ValueError as err:
             raise ValueError(f"Invalid timestamp: {data["timestamp"]!r}") from err
 
@@ -206,37 +210,34 @@ class DWDMosmixLStations(BaseModel):
 
 
 class DWDTenMinNowPercipitationStations(BaseModel):
-    Stations_id: list[
-        Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
-    ]
-    von_datum: list[datetime]
-    bis_datum: list[datetime]
-    Stationshoehe: list[int]
-    geoBreite: list[float]
-    geoLaenge: list[float]
-    Stationsname: list[str]
-    Bundesland: list[str]
-    Abgabe: list[Optional[str]]
+    Stations_id: Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
+    von_datum: datetime
+    bis_datum: datetime
+    Stationshoehe: int
+    geoBreite: float
+    geoLaenge: float
+    Stationsname: str
+    Bundesland: str
+    Abgabe: Optional[str]
 
     @model_validator(mode="before")
     @classmethod
-    def _clean_empty_strings(cls, data: dict) -> dict:
-        for key, value in data.items():
-            if key == "Abgabe":
-                data[key] = [None if v == "-" else v for v in value]
+    def _clean_empty_strings(cls, data: dict[str, str]) -> dict:
+        value = data["Abgabe"]
+        data["Abgabe"] = None if value == "-" else value
         return data
 
     @classmethod
     def validate(
         cls,
-        raw: dict[str, str],
+        raw: list[dict[str, str]],
     ) -> Self:
-        adapter = TypeAdapter(cls)
+        adapter = TypeAdapter(list[cls])
         try:
             return adapter.validate_python(raw)
         except ValidationError as exc:
             exc.add_note(
-                "While validating DWD available hourly percipitation weather stations."
+                "While validating DWD available 10min percipitation weather stations."
             )
             raise
 

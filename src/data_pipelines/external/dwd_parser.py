@@ -220,13 +220,14 @@ class DWDTenMinNowPercipitationStationsParser:
 
         # Determine if last token is a valid Abgabe value
         is_abgabe = last in ("Frei")
-
         if not is_abgabe:
             stationsname = " ".join(parts[6:-1])
+            print("not abgabe", stationsname)
             abgabe = "-"
             bundesland = parts[-1]
         else:
             stationsname = parts[7]
+            print("abgabe", stationsname)
             bundesland = parts[-2]
             abgabe = last
 
@@ -255,20 +256,9 @@ class DWDTenMinNowPercipitationStationsParser:
     @classmethod
     def _create_json_structure(
         cls, txt_matrix: list[list[str]]
-    ) -> dict[str, list[str]]:
-        keys = txt_matrix[0]
-        stations_data = dict.fromkeys(keys)
-        txt_matrix_without_header = txt_matrix[1:]
-        stations_data[keys[0]] = [row[0] for row in txt_matrix_without_header]
-        stations_data[keys[1]] = [row[1] for row in txt_matrix_without_header]
-        stations_data[keys[2]] = [row[2] for row in txt_matrix_without_header]
-        stations_data[keys[3]] = [row[3] for row in txt_matrix_without_header]
-        stations_data[keys[4]] = [row[4] for row in txt_matrix_without_header]
-        stations_data[keys[5]] = [row[5] for row in txt_matrix_without_header]
-        stations_data[keys[6]] = [row[6] for row in txt_matrix_without_header]
-        stations_data[keys[7]] = [row[7] for row in txt_matrix_without_header]
-        stations_data[keys[8]] = [row[8] for row in txt_matrix_without_header]
-        return stations_data
+    ) -> list[dict[str, str]]:
+        headers = txt_matrix[0]
+        return [dict(zip(headers, row)) for row in txt_matrix[1:]]
 
     @classmethod
     def parse(cls, stations_content: bytes) -> dict[str, str]:
