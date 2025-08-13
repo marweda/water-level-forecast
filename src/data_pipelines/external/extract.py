@@ -8,15 +8,7 @@ from .dwd_parser import (
     DWDTenMinNowPercipitationStationsParser,
     DWDTenMinNowPercipitationParser,
 )
-from .schemas import (
-    PegelonlineStation,
-    PegelonlineCurrentWaterLevel,
-    PegelonlineForecastedAndEstimatedWaterLevel,
-    DWDMosmixLSingleStationForecasts,
-    DWDMosmixLStations,
-    DWDTenMinNowPercipitationStations,
-    DWDTenMinNowPercipitation,
-)
+from . import schemas
 
 
 __all__ = ["DataExtractor", "APIEndpoints", "BaseURLs"]
@@ -93,48 +85,48 @@ class DataExtractor:
     # Pegelonline methods
     def fetch_pegelonline_stations(
         self, params: dict | None = None
-    ) -> list[PegelonlineStation]:
+    ) -> list[schemas.PegelonlineStation]:
         """Fetch Pegelonline stations"""
         client = self._clients["pegelonline"]
         response = client.get(self.endpoints.pegelonline_stations, params=params)
         response.raise_for_status()
         raw = response.json()
-        return PegelonlineStation.validate(raw, params)
+        return schemas.PegelonlineStation.validate(raw, params)
 
     def fetch_pegelonline_current_water_level(
         self, uuid: str
-    ) -> PegelonlineCurrentWaterLevel:
+    ) -> schemas.PegelonlineCurrentWaterLevel:
         """Fetch current water level for a Pegelonline station"""
         client = self._clients["pegelonline"]
         endpoint = self.endpoints.pegelonline_current_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return PegelonlineCurrentWaterLevel.validate(raw, uuid)
+        return schemas.PegelonlineCurrentWaterLevel.validate(raw, uuid)
 
     def fetch_pegelonline_forecasted_water_level(
         self, uuid: str
-    ) -> list[PegelonlineForecastedAndEstimatedWaterLevel]:
+    ) -> list[schemas.PegelonlineForecastedAndEstimatedWaterLevel]:
         """Fetch forecasted and estimated water levels for a Pegelonline station"""
         client = self._clients["pegelonline"]
         endpoint = self.endpoints.pegelonline_forecasted_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return PegelonlineForecastedAndEstimatedWaterLevel.validate(raw, uuid)
+        return schemas.PegelonlineForecastedAndEstimatedWaterLevel.validate(raw, uuid)
 
     # DWD MOSMIX methods
-    def fetch_dwd_mosmix_stations(self) -> list[DWDMosmixLStations]:
+    def fetch_dwd_mosmix_stations(self) -> list[schemas.DWDMosmixLStations]:
         """Fetch DWD MOSMIX-L station catalog"""
         client = self._clients["dwd"]
         response = client.get(self.endpoints.dwd_mosmix_stations)
         response.raise_for_status()
         raw_data = DWDMosmixLStationsParser.parse(response.content)
-        return DWDMosmixLStations.validate(raw_data)
+        return schemas.DWDMosmixLStations.validate(raw_data)
 
     def fetch_dwd_mosmix_single_station(
         self, station_id: str
-    ) -> list[DWDMosmixLSingleStationForecasts]:
+    ) -> list[schemas.DWDMosmixLSingleStationForecasts]:
         """Fetch DWD MOSMIX-L forecast for a single station"""
         client = self._clients["dwd_opendata"]
         endpoint = self.endpoints.dwd_mosmix_single_station.format(
@@ -143,26 +135,26 @@ class DataExtractor:
         response = client.get(endpoint)
         response.raise_for_status()
         raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
-        return DWDMosmixLSingleStationForecasts.validate(raw_data, station_id)
+        return schemas.DWDMosmixLSingleStationForecasts.validate(raw_data, station_id)
 
     # DWD Precipitation methods
     def fetch_dwd_precipitation_stations(
         self,
-    ) -> list[DWDTenMinNowPercipitationStations]:
+    ) -> list[schemas.DWDTenMinNowPercipitationStations]:
         """Fetch DWD 10-minute precipitation station catalog"""
         client = self._clients["dwd_opendata"]
         response = client.get(self.endpoints.dwd_precipitation_stations)
         response.raise_for_status()
         raw_data = DWDTenMinNowPercipitationStationsParser.parse(response.content)
-        return DWDTenMinNowPercipitationStations.validate(raw_data)
+        return schemas.DWDTenMinNowPercipitationStations.validate(raw_data)
 
     def fetch_dwd_precipitation_data(
         self, station_id: str
-    ) -> list[DWDTenMinNowPercipitation]:
+    ) -> list[schemas.DWDTenMinNowPercipitation]:
         """Fetch DWD 10-minute precipitation data for a station"""
         client = self._clients["dwd_opendata"]
         endpoint = self.endpoints.dwd_precipitation_data.format(station_id=station_id)
         response = client.get(endpoint)
         response.raise_for_status()
         raw_data = DWDTenMinNowPercipitationParser.parse(response.content)
-        return DWDTenMinNowPercipitation.validate(raw_data, station_id)
+        return schemas.DWDTenMinNowPercipitation.validate(raw_data, station_id)
