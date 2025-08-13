@@ -1,4 +1,3 @@
-from .external import *
+from .external import DataExtractor, APIEndpoints, BaseURLs
 
-__all__ = []
-__all__ += external.__all__
+__all__ = ["DataExtractor", "APIEndpoints", "BaseURLs"]
