@@ -11,7 +11,6 @@ from pydantic import (
     model_validator,
     ValidationInfo,
     TypeAdapter,
-    ValidationError,
 )
 
 __all__ = [
@@ -68,11 +67,7 @@ class PegelonlineStation(BaseModel):
         params: dict[str, str],
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw, context=params)
-        except ValidationError as exc:
-            exc.add_note(f"while validating /stations.json with params={params!r}")
-            raise
+        return adapter.validate_python(raw, context=params)
 
 
 class PegelonlineCurrentWaterLevel(BaseModel):
@@ -97,11 +92,7 @@ class PegelonlineCurrentWaterLevel(BaseModel):
         uuid: str,
     ) -> Self:
         adapter = TypeAdapter(cls)
-        try:
-            return adapter.validate_python(raw, context={"uuid": uuid})
-        except ValidationError as exc:
-            exc.add_note(f"while validating /stations/{uuid}/W/currentmeasurement.json")
-            raise
+        return adapter.validate_python(raw, context={"uuid": uuid})
 
 
 class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
@@ -126,11 +117,7 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
         uuid: str,
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw, context={"uuid": uuid})
-        except ValidationError as exc:
-            exc.add_note(f"while validating /stations/{uuid}/WV/measurements.json")
-            raise
+        return adapter.validate_python(raw, context={"uuid": uuid})
 
 
 class DWDMosmixLSingleStationForecasts(BaseModel):
@@ -176,11 +163,7 @@ class DWDMosmixLSingleStationForecasts(BaseModel):
         station_id: str,
     ) -> Self:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw, context={"station_id": station_id})
-        except ValidationError as exc:
-            exc.add_note(f"While validating MOSMIX_L forecast for station {station_id}")
-            raise
+        return adapter.validate_python(raw, context={"station_id": station_id})
 
 
 class DWDMosmixLStations(BaseModel):
@@ -202,11 +185,7 @@ class DWDMosmixLStations(BaseModel):
         raw: list[dict[str, str]],
     ) -> Self:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw)
-        except ValidationError as exc:
-            exc.add_note("While validating MOSMIX_L available stations.")
-            raise
+        return adapter.validate_python(raw)
 
 
 class DWDTenMinNowPercipitationStations(BaseModel):
@@ -233,13 +212,7 @@ class DWDTenMinNowPercipitationStations(BaseModel):
         raw: list[dict[str, str]],
     ) -> Self:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw)
-        except ValidationError as exc:
-            exc.add_note(
-                "While validating DWD available 10min percipitation weather stations."
-            )
-            raise
+        return adapter.validate_python(raw)
 
 
 class DWDTenMinNowPercipitation(BaseModel):
@@ -288,10 +261,4 @@ class DWDTenMinNowPercipitation(BaseModel):
         station_id: str,
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])
-        try:
-            return adapter.validate_python(raw, context={"station_id": station_id})
-        except ValidationError as exc:
-            exc.add_note(
-                f"While validating 10min precipitation data for station {station_id}"
-            )
-            raise
+        return adapter.validate_python(raw, context={"station_id": station_id})
