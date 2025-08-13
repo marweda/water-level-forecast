@@ -85,35 +85,35 @@ class DataExtractor:
     # Pegelonline methods
     def fetch_pegelonline_stations(
         self, params: dict | None = None
-    ) -> list[schemas.PegelonlineStation]:
+    ) -> list[schemas.PegelonlineStations]:
         """Fetch Pegelonline stations"""
         client = self._clients["pegelonline"]
         response = client.get(self.endpoints.pegelonline_stations, params=params)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineStation.validate(raw, params)
+        return schemas.PegelonlineStations.validate(raw, params)
 
     def fetch_pegelonline_current_water_level(
         self, uuid: str
-    ) -> schemas.PegelonlineCurrentWaterLevel:
+    ) -> schemas.PegelonlineMeasurements:
         """Fetch current water level for a Pegelonline station"""
         client = self._clients["pegelonline"]
         endpoint = self.endpoints.pegelonline_current_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineCurrentWaterLevel.validate(raw, uuid)
+        return schemas.PegelonlineMeasurements.validate(raw, uuid)
 
     def fetch_pegelonline_forecasted_water_level(
         self, uuid: str
-    ) -> list[schemas.PegelonlineForecastedAndEstimatedWaterLevel]:
+    ) -> list[schemas.PegelonlineForecasts]:
         """Fetch forecasted and estimated water levels for a Pegelonline station"""
         client = self._clients["pegelonline"]
         endpoint = self.endpoints.pegelonline_forecasted_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineForecastedAndEstimatedWaterLevel.validate(raw, uuid)
+        return schemas.PegelonlineForecasts.validate(raw, uuid)
 
     # DWD MOSMIX methods
     def fetch_dwd_mosmix_stations(self) -> list[schemas.DWDMosmixLStations]:
@@ -126,7 +126,7 @@ class DataExtractor:
 
     def fetch_dwd_mosmix_single_station(
         self, station_id: str
-    ) -> list[schemas.DWDMosmixLSingleStationForecasts]:
+    ) -> list[schemas.DWDMosmixLForecasts]:
         """Fetch DWD MOSMIX-L forecast for a single station"""
         client = self._clients["dwd_opendata"]
         endpoint = self.endpoints.dwd_mosmix_single_station.format(
@@ -135,26 +135,26 @@ class DataExtractor:
         response = client.get(endpoint)
         response.raise_for_status()
         raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
-        return schemas.DWDMosmixLSingleStationForecasts.validate(raw_data, station_id)
+        return schemas.DWDMosmixLForecasts.validate(raw_data, station_id)
 
     # DWD Precipitation methods
     def fetch_dwd_precipitation_stations(
         self,
-    ) -> list[schemas.DWDTenMinNowPercipitationStations]:
+    ) -> list[schemas.DWDPercipitationStations]:
         """Fetch DWD 10-minute precipitation station catalog"""
         client = self._clients["dwd_opendata"]
         response = client.get(self.endpoints.dwd_precipitation_stations)
         response.raise_for_status()
         raw_data = DWDTenMinNowPercipitationStationsParser.parse(response.content)
-        return schemas.DWDTenMinNowPercipitationStations.validate(raw_data)
+        return schemas.DWDPercipitationStations.validate(raw_data)
 
     def fetch_dwd_precipitation_data(
         self, station_id: str
-    ) -> list[schemas.DWDTenMinNowPercipitation]:
+    ) -> list[schemas.DWDPercipitationMeasurements]:
         """Fetch DWD 10-minute precipitation data for a station"""
         client = self._clients["dwd_opendata"]
         endpoint = self.endpoints.dwd_precipitation_data.format(station_id=station_id)
         response = client.get(endpoint)
         response.raise_for_status()
         raw_data = DWDTenMinNowPercipitationParser.parse(response.content)
-        return schemas.DWDTenMinNowPercipitation.validate(raw_data, station_id)
+        return schemas.DWDPercipitationMeasurements.validate(raw_data, station_id)

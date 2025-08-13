@@ -14,17 +14,17 @@ from pydantic import (
 )
 
 __all__ = [
-    "PegelonlineStation",
-    "PegelonlineCurrentWaterLevel",
-    "PegelonlineForecastedAndEstimatedWaterLevel",
-    "DWDMosmixLSingleStationForecasts",
+    "PegelonlineStations",
+    "PegelonlineMeasurements",
+    "PegelonlineForecasts",
+    "DWDMosmixLForecasts",
     "DWDMosmixLStations",
-    "DWDTenMinNowPercipitationStations",
-    "DWDTenMinNowPercipitation",
+    "DWDPercipitationStations",
+    "DWDPercipitationMeasurements",
 ]
 
 
-class PegelonlineStation(BaseModel):
+class PegelonlineStations(BaseModel):
     uuid: UUID
     number: int
     shortname: str
@@ -70,7 +70,7 @@ class PegelonlineStation(BaseModel):
         return adapter.validate_python(raw, context=params)
 
 
-class PegelonlineCurrentWaterLevel(BaseModel):
+class PegelonlineMeasurements(BaseModel):
     uuid: UUID  # To be injected via validator
     timestamp: datetime
     value: int
@@ -95,7 +95,7 @@ class PegelonlineCurrentWaterLevel(BaseModel):
         return adapter.validate_python(raw, context={"uuid": uuid})
 
 
-class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
+class PegelonlineForecasts(BaseModel):
     uuid: UUID
     initialized: datetime
     timestamp: datetime
@@ -120,7 +120,7 @@ class PegelonlineForecastedAndEstimatedWaterLevel(BaseModel):
         return adapter.validate_python(raw, context={"uuid": uuid})
 
 
-class DWDMosmixLSingleStationForecasts(BaseModel):
+class DWDMosmixLForecasts(BaseModel):
     station_id: str  # To be injected via validator
     issue_time: datetime
     timestamp: datetime
@@ -188,7 +188,7 @@ class DWDMosmixLStations(BaseModel):
         return adapter.validate_python(raw)
 
 
-class DWDTenMinNowPercipitationStations(BaseModel):
+class DWDPercipitationStations(BaseModel):
     Stations_id: Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
     von_datum: datetime
     bis_datum: datetime
@@ -215,7 +215,7 @@ class DWDTenMinNowPercipitationStations(BaseModel):
         return adapter.validate_python(raw)
 
 
-class DWDTenMinNowPercipitation(BaseModel):
+class DWDPercipitationMeasurements(BaseModel):
     station_id: str = Field(alias="STATIONS_ID")
     timestamp: datetime = Field(alias="MESS_DATUM")
     quality_note: int = Field(alias="QN")
