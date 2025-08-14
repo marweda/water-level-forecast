@@ -77,6 +77,15 @@ class PegelonlineMeasurements(BaseModel):
     stateMnwMhw: str
     stateNswHsw: str
 
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def convert_to_utc(cls, v: datetime) -> datetime:
+        """Convert Pegelonline timestamp to UTC.
+        
+        Pegelonline provides timestamps with timezone offset (e.g., +01:00, +02:00).
+        """
+        return v.astimezone(timezone.utc)
+
     @model_validator(mode="before")
     @classmethod
     def inject_uuid(cls, data, info: ValidationInfo):
@@ -101,6 +110,15 @@ class PegelonlineForecasts(BaseModel):
     timestamp: datetime
     value: int
     type: Literal["forecast", "estimate"]
+
+    @field_validator("initialized", "timestamp", mode="after")
+    @classmethod
+    def convert_to_utc(cls, v: datetime) -> datetime:
+        """Convert Pegelonline timestamps to UTC.
+        
+        Pegelonline provides timestamps with timezone offset (e.g., +01:00, +02:00).
+        """
+        return v.astimezone(timezone.utc)
 
     @model_validator(mode="before")
     @classmethod
@@ -133,6 +151,7 @@ class DWDMosmixLForecasts(BaseModel):
         cls, data: dict, info: ValidationInfo
     ) -> list[dict]:
         # Convert ISO strings to datetime
+        # DWD MOSMIX data comes with 'Z' suffix indicating UTC
         try:
             data["issue_time"] = datetime.fromisoformat(
                 data["issue_time"].replace("Z", "+00:00")
@@ -155,6 +174,19 @@ class DWDMosmixLForecasts(BaseModel):
             data["station_id"] = info.context["station_id"]
 
         return data
+
+    @field_validator("issue_time", "timestamp", mode="after")
+    @classmethod
+    def verify_utc(cls, v: datetime) -> datetime:
+        """Verify that DWD timestamps are in UTC.
+        
+        DWD MOSMIX data must be in UTC (provided with 'Z' suffix).
+        """
+        if v.tzinfo != timezone.utc:
+            raise ValueError(
+                f"DWD MOSMIX timestamp must be in UTC, got {v.tzinfo}"
+            )
+        return v
 
     @classmethod
     def validate(
@@ -199,6 +231,19 @@ class DWDPercipitationStations(BaseModel):
     Bundesland: str
     Abgabe: Optional[str]
 
+    @field_validator("von_datum", "bis_datum", mode="after")
+    @classmethod
+    def verify_utc(cls, v: datetime) -> datetime:
+        """Verify that DWD station dates are in UTC.
+        
+        DWD data must be in UTC.
+        """
+        if v.tzinfo != timezone.utc:
+            raise ValueError(
+                f"DWD precipitation station date must be in UTC, got {v.tzinfo}"
+            )
+        return v
+
     @model_validator(mode="before")
     @classmethod
     def _clean_empty_strings(cls, data: dict[str, str]) -> dict:
@@ -226,6 +271,11 @@ class DWDPercipitationMeasurements(BaseModel):
     @field_validator("timestamp", mode="before")
     @classmethod
     def parse_timestamp(cls, v: str) -> datetime:
+        """Parse DWD precipitation timestamp and set to UTC.
+        
+        DWD precipitation data timestamps are in UTC but provided as
+        naive datetime strings in format YYYYMMDDHHMM.
+        """
         return datetime.strptime(v, "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
 
     @field_validator("precipitation_duration", "precipitation_index", mode="before")
