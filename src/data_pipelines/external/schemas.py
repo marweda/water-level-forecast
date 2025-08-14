@@ -200,14 +200,14 @@ class DWDMosmixLForecasts(BaseModel):
 
 
 class DWDMosmixLStations(BaseModel):
-    ID: Annotated[str, Field(pattern=r".*\d.*")]
-    ICAO: Optional[str]
-    NAME: str
-    LAT: float
-    LON: float
-    ELEV: int
+    id: Annotated[str, Field(alias="ID", pattern=r".*\d.*")]
+    icao: Optional[str] = Field(alias="ICAO")
+    name: str = Field(alias="NAME")
+    latitude: float = Field(alias="LAT")
+    longitude: float = Field(alias="LON")
+    elevation: int = Field(alias="ELEV")
 
-    @field_validator("ICAO", mode="before")
+    @field_validator("icao", mode="before")
     @classmethod
     def _dash_means_none(cls, v):
         return None if v == "----" else v
@@ -222,17 +222,17 @@ class DWDMosmixLStations(BaseModel):
 
 
 class DWDPercipitationStations(BaseModel):
-    Stations_id: Annotated[str, Field(min_length=5, max_length=5, pattern=r"^\d{5}$")]
-    von_datum: datetime
-    bis_datum: datetime
-    Stationshoehe: int
-    geoBreite: float
-    geoLaenge: float
-    Stationsname: str
-    Bundesland: str
-    Abgabe: Optional[str]
+    station_id: Annotated[str, Field(alias="Stations_id", min_length=5, max_length=5, pattern=r"^\d{5}$")]
+    start_date: datetime = Field(alias="von_datum")
+    end_date: datetime = Field(alias="bis_datum")
+    station_elevation: int = Field(alias="Stationshoehe")
+    latitude: float = Field(alias="geoBreite")
+    longitude: float = Field(alias="geoLaenge")
+    station_name: str = Field(alias="Stationsname")
+    bundesland: str = Field(alias="Bundesland")
+    release_status: Optional[str] = Field(alias="Abgabe")
 
-    @field_validator("von_datum", "bis_datum", mode="after")
+    @field_validator("start_date", "end_date", mode="after")
     @classmethod
     def verify_utc(cls, v: datetime) -> datetime:
         """Verify that DWD station dates are in UTC.
