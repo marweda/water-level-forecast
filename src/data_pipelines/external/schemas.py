@@ -144,6 +144,7 @@ class DWDMosmixLForecasts(BaseModel):
     timestamp: datetime
     RR1c: Optional[float]
     RR3c: Optional[float]
+    TTT: Optional[float]  # Temperature in Kelvin
 
     @model_validator(mode="before")
     @classmethod
@@ -166,7 +167,7 @@ class DWDMosmixLForecasts(BaseModel):
         except ValueError as err:
             raise ValueError(f"Invalid timestamp: {data["timestamp"]!r}") from err
 
-        for param in ("RR1c", "RR3c"):
+        for param in ("RR1c", "RR3c", "TTT"):
             value = data[param]
             data[param] = None if value == "-" else value
 

@@ -68,7 +68,7 @@ class DWDMosmixLSingleStationKMZParser:
 
         for forecast_elem in placemark.findall(".//dwd:Forecast", cls.NS):
             param_name = forecast_elem.attrib.get(f"{{{cls.NS['dwd']}}}elementName")
-            if param_name not in ("RR1c", "RR3c"):
+            if param_name not in ("RR1c", "RR3c", "TTT"):
                 continue
 
             value_elem = forecast_elem.find("dwd:value", cls.NS)
@@ -84,7 +84,7 @@ class DWDMosmixLSingleStationKMZParser:
         # Ensure at least one relevant parameter was parsed
         if not forecasts:
             raise ValueError(
-                "No forecasts found for parameters 'RR1c' or 'RR3c' in the XML content."
+                "No forecasts found for parameters 'RR1c', 'RR3c', or 'TTT' in the XML content."
             )
 
         return forecasts
@@ -96,16 +96,20 @@ class DWDMosmixLSingleStationKMZParser:
         forecast_timestamps: list[str],
         forecasts: dict[str, list[str]],
     ) -> dict[str, str]:
-        rr1c_values = forecasts["RR1c"]
-        rr3c_values = forecasts["RR3c"]
+        rr1c_values = forecasts.get("RR1c", ["-"] * len(forecast_timestamps))
+        rr3c_values = forecasts.get("RR3c", ["-"] * len(forecast_timestamps))
+        ttt_values = forecasts.get("TTT", ["-"] * len(forecast_timestamps))
         return [
             {
                 "issue_time": issue_time,
                 "timestamp": ft,
                 "RR1c": rv1,
                 "RR3c": rv3,
+                "TTT": ttt,
             }
-            for ft, rv1, rv3 in zip(forecast_timestamps, rr1c_values, rr3c_values)
+            for ft, rv1, rv3, ttt in zip(
+                forecast_timestamps, rr1c_values, rr3c_values, ttt_values
+            )
         ]
 
     @classmethod
