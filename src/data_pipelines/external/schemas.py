@@ -21,6 +21,8 @@ __all__ = [
     "DWDMosmixLStations",
     "DWDPercipitationStations",
     "DWDPercipitationMeasurements",
+    "DWDTemperatureStations",
+    "DWDTemperatureMeasurements",
 ]
 
 
@@ -309,6 +311,131 @@ class DWDPercipitationMeasurements(BaseModel):
     def validate(
         cls,
         raw: dict[str, str],
+        station_id: str,
+    ) -> list[Self]:
+        adapter = TypeAdapter(list[cls])
+        return adapter.validate_python(raw, context={"station_id": station_id})
+
+
+class DWDTemperatureStations(BaseModel):
+    """Schema for DWD 10-minute temperature station data.
+    
+    Similar structure to precipitation stations.
+    """
+    station_id: Annotated[str, Field(alias="Stations_id", min_length=5, max_length=5, pattern=r"^\d{5}$")]
+    start_date: datetime = Field(alias="von_datum")
+    end_date: datetime = Field(alias="bis_datum")
+    station_elevation: int = Field(alias="Stationshoehe")
+    latitude: float = Field(alias="geoBreite")
+    longitude: float = Field(alias="geoLaenge")
+    station_name: str = Field(alias="Stationsname")
+    bundesland: str = Field(alias="Bundesland")
+    release_status: Optional[str] = Field(alias="Abgabe")
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_station_date(cls, v: Any) -> datetime:
+        """Parse station dates in format YYYYMMDD to UTC-aware datetime."""
+        if isinstance(v, datetime):
+            return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+        v_str = str(v).strip()
+        return datetime.strptime(v_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+
+    @field_validator("start_date", "end_date", mode="after")
+    @classmethod
+    def verify_utc(cls, v: datetime) -> datetime:
+        """Verify that DWD station dates are in UTC.
+        
+        DWD data must be in UTC.
+        """
+        if v.tzinfo != timezone.utc:
+            raise ValueError(
+                f"DWD temperature station date must be in UTC, got {v.tzinfo}"
+            )
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def _clean_empty_strings(cls, data: dict[str, str]) -> dict:
+        value = data.get("Abgabe", "")
+        data["Abgabe"] = None if value == "-" else value
+        return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: list[dict[str, str]],
+    ) -> list[Self]:
+        adapter = TypeAdapter(list[cls])
+        return adapter.validate_python(raw)
+
+
+class DWDTemperatureMeasurements(BaseModel):
+    """Schema for DWD 10-minute temperature measurement data.
+    
+    Fields:
+    - STATIONS_ID: Station ID
+    - MESS_DATUM: Measurement timestamp (YYYYMMDDHHMM format in UTC)
+    - QN: Quality note (1, 2, or 3)
+    - PP_10: Pressure in hPa (-999 for missing)
+    - TT_10: Air temperature at 2m above ground in Celsius (-999 for missing)
+    - TM5_10: Air temperature at 5cm above ground in Celsius (-999 for missing)
+    - RF_10: Relative humidity in percent (-999 for missing)
+    - TD_10: Dew point temperature in Celsius (-999 for missing)
+    """
+    station_id: str = Field(alias="STATIONS_ID")
+    timestamp: datetime = Field(alias="MESS_DATUM")
+    quality_note: int = Field(alias="QN")
+    pressure_hpa: Optional[float] = Field(alias="PP_10")
+    temperature_2m: Optional[float] = Field(alias="TT_10")
+    temperature_5cm: Optional[float] = Field(alias="TM5_10")
+    relative_humidity: Optional[float] = Field(alias="RF_10")
+    dew_point_temperature: Optional[float] = Field(alias="TD_10")
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def parse_timestamp(cls, v: str) -> datetime:
+        """Parse DWD temperature timestamp and set to UTC.
+        
+        DWD temperature data timestamps are in UTC but provided as
+        naive datetime strings in format YYYYMMDDHHMM.
+        """
+        return datetime.strptime(v, "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
+
+    @field_validator(
+        "pressure_hpa", 
+        "temperature_2m", 
+        "temperature_5cm", 
+        "relative_humidity", 
+        "dew_point_temperature", 
+        mode="before"
+    )
+    @classmethod
+    def handle_missing_float(cls, v: str) -> Optional[float]:
+        """Convert -999 to None for missing values."""
+        v_stripped = str(v).strip()
+        return None if v_stripped == "-999" else float(v_stripped)
+
+    @model_validator(mode="before")
+    @classmethod
+    def process_station_data(cls, data: dict, info: ValidationInfo) -> dict:
+        # Pad STATIONS_ID to 5 digits with leading zeros
+        station_id_str = str(data["STATIONS_ID"])
+        data["STATIONS_ID"] = station_id_str.zfill(5)
+
+        context = info.context or {}
+        expected = context.get("station_id")
+        if expected and str(data.get("STATIONS_ID")) != expected:
+            raise ValueError(
+                f"Station ID mismatch: expected {expected}, "
+                f"got {data.get('STATIONS_ID')}"
+            )
+        return data
+
+    @classmethod
+    def validate(
+        cls,
+        raw: list[dict[str, str]],
         station_id: str,
     ) -> list[Self]:
         adapter = TypeAdapter(list[cls])

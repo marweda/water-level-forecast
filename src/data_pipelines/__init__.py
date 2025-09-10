@@ -1,3 +1,8 @@
-from .external import DataExtractor, APIEndpoints, BaseURLs
+from .external import DataExtractor, APIEndpoints, BaseURLs, ClientManager
 
-__all__ = ["DataExtractor", "APIEndpoints", "BaseURLs"]
+__all__ = [
+    "DataExtractor",
+    "APIEndpoints",
+    "BaseURLs",
+    "ClientManager",
+]

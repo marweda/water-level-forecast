@@ -1,160 +1,179 @@
-from dataclasses import dataclass
+from typing import Type, Optional
 
-import httpx
-
-from .dwd_parser import (
-    DWDMosmixLSingleStationKMZParser,
-    DWDMosmixLStationsParser,
-    DWDTenMinNowPercipitationStationsParser,
-    DWDTenMinNowPercipitationParser,
-)
+from .api import APIEndpoints, BaseURLs, ClientManager
+from . import dwd_parser
 from . import schemas
 
 
-__all__ = ["DataExtractor", "APIEndpoints", "BaseURLs"]
+__all__ = ["DataExtractor"]
 
-
-@dataclass(frozen=True)
-class BaseURLs:
-    """Base URLs for different data providers"""
-
-    dwd_opendata: str = "https://opendata.dwd.de/"
-    dwd: str = "https://www.dwd.de/"
-    pegelonline: str = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/"
-
-
-@dataclass(frozen=True)
-class APIEndpoints:
-    """Endpoint configurations for all APIs"""
-
-    # Pegelonline endpoints
-    pegelonline_stations: str = "stations.json"
-    pegelonline_current_water_level: str = "stations/{uuid}/W/currentmeasurement.json"
-    pegelonline_forecasted_water_level: str = "stations/{uuid}/WV/measurements.json"
-
-    # DWD MOSMIX endpoints
-    dwd_mosmix_stations: str = (
-        "DE/leistungen/met_verfahren_mosmix/mosmix_stationskatalog.cfg?view=nasPublication"
-    )
-    dwd_mosmix_single_station: str = (
-        "weather/local_forecasts/mos/MOSMIX_L/single_stations/{station_id}/kml/MOSMIX_L_LATEST_{station_id}.kmz"
-    )
-
-    # DWD precipitation endpoints
-    dwd_precipitation_stations: str = (
-        "climate_environment/CDC/observations_germany/climate/10_minutes/precipitation/now/zehn_now_rr_Beschreibung_Stationen.txt"
-    )
-    dwd_precipitation_data: str = (
-        "climate_environment/CDC/observations_germany/climate/10_minutes/precipitation/now/10minutenwerte_nieder_{station_id}_now.zip"
-    )
 
 
 class DataExtractor:
-    """Unified data extractor for all external APIs"""
+    """Unified data extractor for all external APIs with dependency injection support."""
 
-    def __init__(self, timeout: float = 60.0):
-        """Initialize extractor with HTTP clients for each base URL"""
-        self.base_urls = BaseURLs()
-        self.endpoints = APIEndpoints()
-        self.timeout = timeout
-
-        # Create HTTP clients for each base URL
-        self._clients = {
-            "dwd_opendata": httpx.Client(
-                base_url=self.base_urls.dwd_opendata, timeout=timeout
-            ),
-            "dwd": httpx.Client(base_url=self.base_urls.dwd, timeout=timeout),
-            "pegelonline": httpx.Client(
-                base_url=self.base_urls.pegelonline, timeout=timeout
-            ),
-        }
+    def __init__(
+        self, 
+        client_manager: Optional[ClientManager] = None,
+        endpoints: Optional[APIEndpoints] = None
+    ):
+        """Initialize extractor with injected dependencies.
+        
+        Args:
+            client_manager: Manager for HTTP clients. If None, creates a default one.
+            endpoints: API endpoints configuration. If None, uses default endpoints.
+        """
+        self.client_manager = client_manager or ClientManager()
+        self.endpoints = endpoints or APIEndpoints()
+        self._owns_client_manager = client_manager is None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Close all HTTP clients"""
-        for client in self._clients.values():
-            client.close()
+        """Close HTTP clients if we own them"""
+        if self._owns_client_manager:
+            self.client_manager.close()
 
     def close(self):
-        """Manually close all HTTP clients"""
-        for client in self._clients.values():
-            client.close()
+        """Manually close HTTP clients if we own them"""
+        if self._owns_client_manager:
+            self.client_manager.close()
 
     # Pegelonline methods
     def fetch_pegelonline_stations(
-        self, params: dict | None = None
+        self, 
+        params: dict | None = None,
+        schema: Type = schemas.PegelonlineStations
     ) -> list[schemas.PegelonlineStations]:
         """Fetch Pegelonline stations"""
-        client = self._clients["pegelonline"]
+        client = self.client_manager.get("pegelonline")
         response = client.get(self.endpoints.pegelonline_stations, params=params)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineStations.validate(raw, params)
+        return schema.validate(raw, params)
 
     def fetch_pegelonline_current_water_level(
-        self, uuid: str
+        self, 
+        uuid: str,
+        schema: Type = schemas.PegelonlineMeasurements
     ) -> schemas.PegelonlineMeasurements:
         """Fetch current water level for a Pegelonline station"""
-        client = self._clients["pegelonline"]
+        client = self.client_manager.get("pegelonline")
         endpoint = self.endpoints.pegelonline_current_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineMeasurements.validate(raw, uuid)
+        return schema.validate(raw, uuid)
 
     def fetch_pegelonline_forecasted_water_level(
-        self, uuid: str
+        self, 
+        uuid: str,
+        schema: Type = schemas.PegelonlineForecasts
     ) -> list[schemas.PegelonlineForecasts]:
         """Fetch forecasted and estimated water levels for a Pegelonline station"""
-        client = self._clients["pegelonline"]
+        client = self.client_manager.get("pegelonline")
         endpoint = self.endpoints.pegelonline_forecasted_water_level.format(uuid=uuid)
         response = client.get(endpoint)
         response.raise_for_status()
         raw = response.json()
-        return schemas.PegelonlineForecasts.validate(raw, uuid)
+        return schema.validate(raw, uuid)
 
     # DWD MOSMIX methods
-    def fetch_dwd_mosmix_stations(self) -> list[schemas.DWDMosmixLStations]:
+    def fetch_dwd_mosmix_stations(
+        self,
+        parser: Type = dwd_parser.DWDMosmixLStationsParser,
+        schema: Type = schemas.DWDMosmixLStations
+    ) -> list[schemas.DWDMosmixLStations]:
         """Fetch DWD MOSMIX-L station catalog"""
-        client = self._clients["dwd"]
+        client = self.client_manager.get("dwd")
         response = client.get(self.endpoints.dwd_mosmix_stations)
         response.raise_for_status()
-        raw_data = DWDMosmixLStationsParser.parse(response.content)
-        return schemas.DWDMosmixLStations.validate(raw_data)
+        
+        # Use parser to process the response
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data)
 
     def fetch_dwd_mosmix_single_station(
-        self, station_id: str
+        self, 
+        station_id: str,
+        parser: Type = dwd_parser.DWDMosmixLSingleStationKMZParser,
+        schema: Type = schemas.DWDMosmixLForecasts
     ) -> list[schemas.DWDMosmixLForecasts]:
         """Fetch DWD MOSMIX-L forecast for a single station"""
-        client = self._clients["dwd_opendata"]
+        client = self.client_manager.get("dwd_opendata")
         endpoint = self.endpoints.dwd_mosmix_single_station.format(
             station_id=station_id
         )
         response = client.get(endpoint)
         response.raise_for_status()
-        raw_data = DWDMosmixLSingleStationKMZParser.parse(response.content)
-        return schemas.DWDMosmixLForecasts.validate(raw_data, station_id)
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data, station_id)
 
     # DWD Precipitation methods
     def fetch_dwd_precipitation_stations(
         self,
+        parser: Type = dwd_parser.DWDTenMinNowPercipitationStationsParser,
+        schema: Type = schemas.DWDPercipitationStations
     ) -> list[schemas.DWDPercipitationStations]:
         """Fetch DWD 10-minute precipitation station catalog"""
-        client = self._clients["dwd_opendata"]
+        client = self.client_manager.get("dwd_opendata")
         response = client.get(self.endpoints.dwd_precipitation_stations)
         response.raise_for_status()
-        raw_data = DWDTenMinNowPercipitationStationsParser.parse(response.content)
-        return schemas.DWDPercipitationStations.validate(raw_data)
+        
+        # Use parser to process the response
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data)
+    
+    def fetch_raw_test(
+        self,
+    ) -> bytes:
+        """Fetch raw DWD 10-minute precipitation station catalog"""
+        client = self.client_manager.get("dwd_opendata")
+        response = client.get(self.endpoints.dwd_precipitation_stations)
+        return response.content
 
     def fetch_dwd_precipitation_data(
-        self, station_id: str
+        self, 
+        station_id: str,
+        parser: Type = dwd_parser.DWDTenMinNowPercipitationParser,
+        schema: Type = schemas.DWDPercipitationMeasurements
     ) -> list[schemas.DWDPercipitationMeasurements]:
         """Fetch DWD 10-minute precipitation data for a station"""
-        client = self._clients["dwd_opendata"]
+        client = self.client_manager.get("dwd_opendata")
         endpoint = self.endpoints.dwd_precipitation_data.format(station_id=station_id)
         response = client.get(endpoint)
         response.raise_for_status()
-        raw_data = DWDTenMinNowPercipitationParser.parse(response.content)
-        return schemas.DWDPercipitationMeasurements.validate(raw_data, station_id)
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data, station_id)
+    
+    # DWD Temperature methods
+    def fetch_dwd_temperature_stations(
+        self,
+        parser: Type = dwd_parser.DWDTenMinNowTemperatureStationsParser,
+        schema: Type = schemas.DWDTemperatureStations
+    ) -> list[schemas.DWDTemperatureStations]:
+        """Fetch DWD 10-minute temperature station catalog"""
+        client = self.client_manager.get("dwd_opendata")
+        response = client.get(self.endpoints.dwd_temperature_stations)
+        response.raise_for_status()
+        
+        # Use parser to process the response
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data)
+
+    def fetch_dwd_temperature_data(
+        self, 
+        station_id: str,
+        parser: Type = dwd_parser.DWDTenMinNowTemperatureParser,
+        schema: Type = schemas.DWDTemperatureMeasurements
+    ) -> list[schemas.DWDTemperatureMeasurements]:
+        """Fetch DWD 10-minute temperature data for a station"""
+        client = self.client_manager.get("dwd_opendata")
+        endpoint = self.endpoints.dwd_temperature_data.format(station_id=station_id)
+        response = client.get(endpoint)
+        response.raise_for_status()
+        
+        # Use parser to process the response
+        raw_data = parser.parse(response.content)
+        return schema.validate(raw_data, station_id)
