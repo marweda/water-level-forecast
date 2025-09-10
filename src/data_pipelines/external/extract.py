@@ -1,6 +1,6 @@
 from typing import Type, Optional
 
-from .api import APIEndpoints, BaseURLs, ClientManager
+from .api import APIEndpoints, ClientManager
 from . import dwd_parser
 from . import schemas
 
@@ -111,7 +111,7 @@ class DataExtractor:
     # DWD Precipitation methods
     def fetch_dwd_precipitation_stations(
         self,
-        parser: Type = dwd_parser.DWDTenMinNowPercipitationStationsParser,
+        parser: Type = dwd_parser.DWDMeasurementStationsParser,
         schema: Type = schemas.DWDPercipitationStations
     ) -> list[schemas.DWDPercipitationStations]:
         """Fetch DWD 10-minute precipitation station catalog"""
@@ -138,7 +138,7 @@ class DataExtractor:
     # DWD Temperature methods
     def fetch_dwd_temperature_stations(
         self,
-        parser: Type = dwd_parser.DWDTenMinNowTemperatureStationsParser,
+        parser: Type = dwd_parser.DWDMeasurementStationsParser,
         schema: Type = schemas.DWDTemperatureStations
     ) -> list[schemas.DWDTemperatureStations]:
         """Fetch DWD 10-minute temperature station catalog"""

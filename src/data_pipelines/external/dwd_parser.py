@@ -3,14 +3,11 @@ import io
 from xml.etree import ElementTree as ET
 import zipfile
 
-import pandas as pd
-
 __all__ = [
     "DWDMosmixLSingleStationKMZParser",
     "DWDMosmixLStationsParser",
-    "DWDTenMinNowPercipitationStationsParser",
     "DWDTenMinNowPercipitationParser",
-    "DWDTenMinNowTemperatureStationsParser",
+    "DWDMeasurementStationsParser",
     "DWDTenMinNowTemperatureParser",
 ]
 
@@ -194,72 +191,196 @@ class DWDTenMinNowTemperatureParser:
 
 
 class DWDMosmixLStationsParser:
-    """Parser for DWD MOSMIX-L station catalog using pandas."""
+    """Parser for DWD MOSMIX-L station catalog."""
+
+    @classmethod
+    def _get_column_boundaries(cls, separator_line: str) -> list[tuple[int, int]]:
+        """Extract column boundaries from the separator line.
+
+        Args:
+            separator_line: Line containing dashes and spaces that define columns
+
+        Returns:
+            List of (start, end) tuples for each column
+        """
+        boundaries = []
+        start = None
+
+        for i, char in enumerate(separator_line):
+            if char == "-" and start is None:
+                start = i
+            elif char == " " and start is not None:
+                boundaries.append((start, i))
+                start = None
+
+        # Handle last column if it extends to the end
+        if start is not None:
+            boundaries.append((start, len(separator_line)))
+
+        return boundaries
+
+    @classmethod
+    def _parse_line(cls, line: str, boundaries: list[tuple[int, int]]) -> list[str]:
+        """Parse a single line using column boundaries.
+
+        Args:
+            line: Line to parse
+            boundaries: List of (start, end) tuples for each column
+
+        Returns:
+            List of column values
+        """
+        values = []
+        for start, end in boundaries:
+            if len(line) >= end:
+                value = line[start:end].strip()
+            elif len(line) > start:
+                value = line[start:].strip()
+            else:
+                value = ""
+            values.append(value)
+        return values
 
     @classmethod
     def parse(cls, content: bytes) -> list[dict]:
         """Parse DWD MOSMIX-L station catalog.
-        
+
         Args:
             content: Raw bytes from the stations file
-            
+
         Returns:
             List of station dictionaries
         """
         # Decode the content
         text = content.decode("latin-1")
-        buffer = io.StringIO(text)
-        
-        # Read using pandas read_fwf, skip the separator line
-        df = pd.read_fwf(buffer, skiprows=[1])
-        
-        # Convert to list of dicts
-        return df.to_dict(orient="records")
+        lines = text.splitlines()
+
+        if len(lines) < 3:
+            return []
+
+        # Get headers from first line
+        header_line = lines[0]
+        headers = header_line.split()
+
+        # Get column boundaries from separator line
+        separator_line = lines[1]
+        boundaries = cls._get_column_boundaries(separator_line)
+
+        # Parse data lines
+        data = []
+        for line in lines[2:]:
+            if line.strip():
+                values = cls._parse_line(line, boundaries)
+                # Create dict with headers as keys
+                row_dict = {}
+                for i, header in enumerate(headers):
+                    if i < len(values):
+                        row_dict[header] = values[i]
+                data.append(row_dict)
+
+        return data
 
 
-class DWDTenMinNowPercipitationStationsParser:
-    """Parser for DWD 10-minute precipitation station catalog using pandas."""
+class DWDMeasurementStationsParser:
+    bundeslaender = {
+        "Baden-Württemberg",
+        "Berlin",
+        "Bremen",
+        "Brandenburg",
+        "Bayern",
+        "Hamburg",
+        "Hessen",
+        "Mecklenburg-Vorpommern",
+        "Niedersachsen",
+        "Nordrhein-Westfalen",
+        "Rheinland-Pfalz",
+        "Saarland",
+        "Sachsen",
+        "Sachsen-Anhalt",
+        "Schleswig-Holstein",
+        "Thüringen",
+    }
+
+    valid_abgabe_values = {"Frei"}
 
     @classmethod
-    def parse(cls, content: bytes) -> list[dict]:
-        """Parse DWD precipitation station catalog.
-        
-        Args:
-            content: Raw bytes from the stations file
-            
-        Returns:
-            List of station dictionaries with properly parsed fields
-        """
-        # Decode the content
-        text = content.decode("latin-1")
-        buffer = io.StringIO(text)
-        
-        # Read using pandas read_fwf, skip the separator line
-        df = pd.read_fwf(buffer, skiprows=[1])
-        
-        # Convert to list of dicts
-        return df.to_dict(orient="records")
-
-
-class DWDTenMinNowTemperatureStationsParser:
-    """Parser for DWD 10-minute temperature station catalog using pandas."""
+    def _extract_txt(cls, stations_content: bytes) -> str:
+        """Extract text content from bytes"""
+        raw_txt = stations_content.decode("latin-1")
+        return raw_txt
 
     @classmethod
-    def parse(cls, content: bytes) -> list[dict]:
-        """Parse DWD temperature station catalog.
-        
-        Args:
-            content: Raw bytes from the stations file
-            
-        Returns:
-            List of station dictionaries with properly parsed fields
-        """
-        # Decode the content
-        text = content.decode("latin-1")
-        buffer = io.StringIO(text)
-        
-        # Read using pandas read_fwf, skip the separator line
-        df = pd.read_fwf(buffer, skiprows=[1])
-        
-        # Convert to list of dicts
-        return df.to_dict(orient="records")
+    def _split_by_rows(cls, raw_txt: str) -> list[str]:
+        """Split text into rows and clean them"""
+        row_splitted_text = raw_txt.split("\n")
+        row_splitted_text = [row.strip() for row in row_splitted_text if row.strip()]
+        return row_splitted_text
+
+    @classmethod
+    def _remove_header_delimiter_row(cls, row_splitted_txt: list[str]) -> list[str]:
+        """Remove the delimiter row (second row with dashes)"""
+        if len(row_splitted_txt) > 1:
+            row_splitted_txt.pop(1)
+        if row_splitted_txt and not row_splitted_txt[-1]:
+            row_splitted_txt.pop()
+        return row_splitted_txt
+
+    @classmethod
+    def _parse_station_row(cls, row: str) -> dict[str, str]:
+        """Parse a single station row into a dictionary"""
+        # Split by spaces to get parts
+        parts = row.split()
+
+        # Extract fixed fields from known positions
+        stations_id = parts[0]
+        von_datum = parts[1]
+        bis_datum = parts[2]
+        stationshoehe = parts[3]
+        geo_breite = parts[4]
+        geo_laenge = parts[5]
+
+        # Determine Abgabe value (last part if it's a known value)
+        last_part = parts[-1]
+        has_abgabe = last_part in cls.valid_abgabe_values
+
+        if has_abgabe:
+            abgabe = last_part
+            bundesland = parts[-2]
+            # Everything between geo_laenge and bundesland is stationsname
+            stationsname_parts = parts[6:-2]
+        else:
+            abgabe = "-"  # Default value when no explicit Abgabe
+            bundesland = last_part
+            # Everything between geo_laenge and bundesland is stationsname
+            stationsname_parts = parts[6:-1]
+
+        stationsname = " ".join(stationsname_parts)
+
+        return {
+            "Stations_id": stations_id,
+            "von_datum": von_datum,
+            "bis_datum": bis_datum,
+            "Stationshoehe": stationshoehe,
+            "geoBreite": geo_breite,
+            "geoLaenge": geo_laenge,
+            "Stationsname": stationsname,
+            "Bundesland": bundesland,
+            "Abgabe": abgabe,
+        }
+
+    @classmethod
+    def _create_json_structure(cls, filtered_rows: list[str]) -> list[dict[str, str]]:
+        stations_data = []
+        for row in filtered_rows[1:]:  # Skip header row
+            station_dict = cls._parse_station_row(row)
+            stations_data.append(station_dict)
+        return stations_data
+
+    @classmethod
+    def parse(cls, stations_content: bytes) -> list[dict[str, str]]:
+        """Parse station content and return list of JSON-like dictionaries"""
+        raw_txt = cls._extract_txt(stations_content)
+        row_splitted_txt = cls._split_by_rows(raw_txt)
+        filtered_rows = cls._remove_header_delimiter_row(row_splitted_txt)
+        stations_data = cls._create_json_structure(filtered_rows)
+        return stations_data
