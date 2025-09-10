@@ -89,8 +89,6 @@ class DataExtractor:
         client = self.client_manager.get("dwd")
         response = client.get(self.endpoints.dwd_mosmix_stations)
         response.raise_for_status()
-        
-        # Use parser to process the response
         raw_data = parser.parse(response.content)
         return schema.validate(raw_data)
 
@@ -120,18 +118,8 @@ class DataExtractor:
         client = self.client_manager.get("dwd_opendata")
         response = client.get(self.endpoints.dwd_precipitation_stations)
         response.raise_for_status()
-        
-        # Use parser to process the response
         raw_data = parser.parse(response.content)
         return schema.validate(raw_data)
-    
-    def fetch_raw_test(
-        self,
-    ) -> bytes:
-        """Fetch raw DWD 10-minute precipitation station catalog"""
-        client = self.client_manager.get("dwd_opendata")
-        response = client.get(self.endpoints.dwd_precipitation_stations)
-        return response.content
 
     def fetch_dwd_precipitation_data(
         self, 
@@ -157,8 +145,6 @@ class DataExtractor:
         client = self.client_manager.get("dwd_opendata")
         response = client.get(self.endpoints.dwd_temperature_stations)
         response.raise_for_status()
-        
-        # Use parser to process the response
         raw_data = parser.parse(response.content)
         return schema.validate(raw_data)
 
@@ -173,7 +159,5 @@ class DataExtractor:
         endpoint = self.endpoints.dwd_temperature_data.format(station_id=station_id)
         response = client.get(endpoint)
         response.raise_for_status()
-        
-        # Use parser to process the response
         raw_data = parser.parse(response.content)
         return schema.validate(raw_data, station_id)
